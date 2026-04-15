@@ -1,5 +1,5 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { ClipboardList, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, CircleDollarSign, ClipboardList, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
@@ -38,6 +38,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import type { SharedData } from '@/types';
 
 type Loan = {
@@ -96,6 +97,14 @@ const statusClasses: Record<string, string> = {
 export default function LoansIndex({ loans, tools, stats }: Props) {
     const { auth } = usePage<SharedData>().props;
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
+    const [returnLoan, setReturnLoan] = useState<Loan | null>(null);
+    const [returning, setReturning] = useState(false);
+    const [returnForm, setReturnForm] = useState({
+        return_datetime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        condition_note: '',
+        damage_fine: '',
+    });
     const loansList = loans.data;
     
     const form = useForm({
@@ -418,7 +427,11 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                         </TableHeader>
                         <TableBody>
                             {loansList.map((loan) => (
-                                <TableRow key={loan.id} className="group transition-colors">
+                                <TableRow
+                                    key={loan.id}
+                                    className="group transition-colors cursor-pointer hover:bg-muted/50"
+                                    onClick={() => setDetailLoan(loan)}
+                                >
                                     <TableCell className="align-top">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-2 font-medium">
@@ -500,11 +513,11 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                                             type="button"
                                                             size="sm"
                                                             variant="outline"
-                                                            className="h-8 shadow-none"
-                                                            onClick={() => router.patch(`/loans/${loan.id}/status`, { status: 'returned' }, { preserveScroll: true })}
+                                                            className="h-8 shadow-none border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10"
+                                                            onClick={(e) => { e.stopPropagation(); setReturnLoan(loan); setReturnForm({ return_datetime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16), condition_note: '', damage_fine: '' }); }}
                                                         >
                                                             <RotateCcw className="mr-1 h-3 w-3" />
-                                                            Cek Pengembalian
+                                                            Proses Kembali
                                                         </Button>
                                                     )}
                                                 </>
@@ -547,6 +560,258 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                     links={loans.links}
                 />
             </Card>
+
+            {/* Detail Dialog */}
+            <Dialog open={!!detailLoan} onOpenChange={(open) => !open && setDetailLoan(null)}>
+                <DialogContent className="sm:max-w-3xl max-w-[96vw] p-0 overflow-hidden max-h-[92vh] flex flex-col">
+                    {detailLoan && (() => {
+                        const statusGradients: Record<string, string> = {
+                            pending:  'from-amber-500/20 via-amber-500/10 to-transparent',
+                            approved: 'from-sky-500/20 via-sky-500/10 to-transparent',
+                            borrowed: 'from-indigo-500/20 via-indigo-500/10 to-transparent',
+                            returned: 'from-emerald-500/20 via-emerald-500/10 to-transparent',
+                            rejected: 'from-rose-500/20 via-rose-500/10 to-transparent',
+                        };
+                        const statusLabels: Record<string, string> = {
+                            pending: 'Menunggu Persetujuan',
+                            approved: 'Disetujui',
+                            borrowed: 'Sedang Dipinjam',
+                            returned: 'Sudah Dikembalikan',
+                            rejected: 'Ditolak',
+                        };
+                        return (
+                            <>
+                                {/* Hero Header */}
+                                <div className={`relative bg-gradient-to-br ${statusGradients[detailLoan.status] ?? 'from-muted/30 to-transparent'} px-7 pt-8 pb-6 border-b border-border/40`}>
+                                    <div className="flex items-start justify-between gap-4 pr-8">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                {detailLoan.loan_code && (
+                                                    <span className="font-mono text-xs bg-background/80 border border-border/60 px-2.5 py-1 rounded-full text-foreground/70">
+                                                        {detailLoan.loan_code}
+                                                    </span>
+                                                )}
+                                                <Badge variant="outline" className={`font-semibold border-transparent capitalize text-xs ${statusClasses[detailLoan.status] ?? ''}`}>
+                                                    {statusLabels[detailLoan.status] ?? detailLoan.status}
+                                                </Badge>
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-foreground leading-tight">{detailLoan.borrower_name}</h2>
+                                            <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">{detailLoan.purpose}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Body */}
+                                <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                                    {/* 2 kolom: Identitas + Jadwal */}
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {/* Identitas */}
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Identitas Peminjam</p>
+                                            <div className="space-y-3 text-sm">
+                                                <div className="flex justify-between border-b border-border/40 pb-2.5">
+                                                    <span className="text-muted-foreground">NIP / NIS</span>
+                                                    <span className="font-semibold">{detailLoan.borrower_identifier ?? '—'}</span>
+                                                </div>
+                                                <div className="flex justify-between border-b border-border/40 pb-2.5">
+                                                    <span className="text-muted-foreground">No. Telepon</span>
+                                                    <span className="font-semibold">{detailLoan.borrower_phone ?? '—'}</span>
+                                                </div>
+                                                <div className="flex justify-between pb-2.5">
+                                                    <span className="text-muted-foreground">Diajukan oleh</span>
+                                                    <span className="font-semibold">{detailLoan.requested_by ?? '—'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Jadwal */}
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Jadwal</p>
+                                            <div className="space-y-3 text-sm">
+                                                <div className="flex justify-between border-b border-border/40 pb-2.5">
+                                                    <span className="text-muted-foreground">Waktu Pinjam</span>
+                                                    <span className="font-semibold">{detailLoan.loan_date ?? '—'}</span>
+                                                </div>
+                                                <div className="flex justify-between border-b border-border/40 pb-2.5">
+                                                    <span className="text-muted-foreground">Batas Kembali</span>
+                                                    <span className="font-semibold">{detailLoan.return_due_date ?? '—'}</span>
+                                                </div>
+                                                <div className="flex justify-between pb-2.5">
+                                                    <span className="text-muted-foreground">Dikembalikan</span>
+                                                    <span className={`font-semibold ${detailLoan.returned_at ? 'text-emerald-600' : 'text-muted-foreground/50'}`}>
+                                                        {detailLoan.returned_at ?? 'Belum'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* Item Pinjaman */}
+                                    <div>
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+                                            Item Pinjaman
+                                            <span className="ml-2 normal-case font-normal text-muted-foreground/70">({detailLoan.items.length} item)</span>
+                                        </p>
+                                        <div className="grid gap-3">
+                                            {detailLoan.items.map((item, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3 hover:bg-muted/40 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                                            <span className="text-primary font-bold text-sm">{idx + 1}</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-foreground">{item.tool_name ?? 'Alat'}</p>
+                                                            <p className="text-xs text-muted-foreground font-mono">{item.tool_code}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-right">
+                                                        {item.condition_out && (
+                                                            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
+                                                                {item.condition_out}
+                                                            </span>
+                                                        )}
+                                                        <div className="rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-sm font-bold">
+                                                            {item.quantity} unit
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {detailLoan.notes && (
+                                        <div>
+                                            <Separator className="mb-6" />
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Catatan</p>
+                                            <p className="text-sm text-muted-foreground leading-relaxed bg-muted/30 rounded-xl p-4 border border-border/50 whitespace-pre-wrap">
+                                                {detailLoan.notes}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        );
+                    })()}
+                </DialogContent>
+            </Dialog>
+
+            {/* ===== Dialog Proses Pengembalian ===== */}
+            <Dialog open={!!returnLoan} onOpenChange={(open) => !open && setReturnLoan(null)}>
+                <DialogContent className="sm:max-w-lg max-w-[95vw]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <RotateCcw className="h-5 w-5 text-emerald-600" />
+                            Proses Pengembalian Alat
+                        </DialogTitle>
+                        <DialogDescription>
+                            {returnLoan?.borrower_name} — {returnLoan?.loan_code ?? `#${returnLoan?.id}`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        {/* Waktu Pengembalian - pakai datetime-local */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="return_datetime">Waktu Pengembalian</Label>
+                            <Input
+                                id="return_datetime"
+                                type="datetime-local"
+                                value={returnForm.return_datetime}
+                                onChange={(e) => setReturnForm(f => ({ ...f, return_datetime: e.target.value }))}
+                            />
+                            {returnLoan?.return_due_date && (() => {
+                                const due = returnLoan.return_due_date.replace(' ', 'T').slice(0, 16);
+                                const isLate = returnForm.return_datetime > due;
+                                return (
+                                    <div className={`rounded-lg px-3 py-2 text-xs flex items-center gap-2 ${
+                                        isLate
+                                            ? 'bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/30 dark:text-rose-400'
+                                            : 'bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400'
+                                    }`}>
+                                        <span>{isLate ? '⚠' : '✓'}</span>
+                                        <span>
+                                            Batas kembali: <strong>{due.replace('T', ' ')}</strong>
+                                            {isLate && ' — Terlambat! Denda akan dihitung (Rp 5.000/hari, dibulatkan ke atas).'}
+                                            {!isLate && ' — Tepat waktu, tidak ada denda keterlambatan.'}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Denda Kerusakan */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="damage_fine" className="flex items-center gap-1.5">
+                                <CircleDollarSign className="h-4 w-4 text-orange-500" />
+                                Denda Kerusakan / Kehilangan (Rp)
+                                <span className="text-muted-foreground font-normal text-xs">(opsional)</span>
+                            </Label>
+                            <Input
+                                id="damage_fine"
+                                type="number"
+                                min="0"
+                                step="1000"
+                                placeholder="0"
+                                value={returnForm.damage_fine}
+                                onChange={(e) => setReturnForm(f => ({ ...f, damage_fine: e.target.value }))}
+                            />
+                            <p className="text-xs text-muted-foreground">Isi jika ada kerusakan atau kehilangan alat. Denda keterlambatan dihitung otomatis.</p>
+                        </div>
+
+                        {/* Catatan Kondisi */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="condition_note">Catatan Kondisi Alat</Label>
+                            <textarea
+                                id="condition_note"
+                                className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                                placeholder="Contoh: Alat dikembalikan dalam kondisi baik. Kabel ada lecet kecil."
+                                value={returnForm.condition_note}
+                                onChange={(e) => setReturnForm(f => ({ ...f, condition_note: e.target.value }))}
+                            />
+                        </div>
+
+                        {/* Summary denda kerusakan */}
+                        {(returnForm.damage_fine && Number(returnForm.damage_fine) > 0) && (
+                            <div className="rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-500/10 dark:border-orange-500/30 p-3 flex items-start gap-2">
+                                <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
+                                <p className="text-sm text-orange-700 dark:text-orange-400">
+                                    Denda kerusakan <span className="font-bold">Rp {Number(returnForm.damage_fine).toLocaleString('id-ID')}</span> akan ditambahkan ke total denda.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setReturnLoan(null)} disabled={returning}>Batal</Button>
+                        <Button
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            disabled={returning}
+                            onClick={() => {
+                                if (!returnLoan) return;
+                                setReturning(true);
+                                router.post('/returns/process', {
+                                    loan_id: returnLoan.id,
+                                    return_datetime: returnForm.return_datetime.replace('T', ' ') + ':00',
+                                    condition_note: returnForm.condition_note,
+                                    damage_fine: returnForm.damage_fine || 0,
+                                }, {
+                                    preserveScroll: true,
+                                    onSuccess: () => { setReturnLoan(null); toast.success('Pengembalian berhasil diproses!'); },
+                                    onError: (errs) => toast.error(Object.values(errs)[0] as string ?? 'Gagal memproses pengembalian.'),
+                                    onFinish: () => setReturning(false),
+                                });
+                            }}
+                        >
+                            {returning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                            {returning ? 'Memproses...' : 'Konfirmasi Pengembalian'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -554,3 +819,4 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
 LoansIndex.layout = {
     breadcrumbs: [{ title: 'Peminjaman', href: '/loans' }],
 };
+

@@ -1,14 +1,39 @@
-import { usePage } from '@inertiajs/react';
-import { Archive, Receipt } from 'lucide-react';
-import Heading from '@/components/heading';
-import { Badge } from '@/components/ui/badge';
+import { router, usePage } from '@inertiajs/react';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+    AlertTriangle,
+    Archive,
+    BadgeCheck,
+    CheckCircle2,
+    CircleDollarSign,
+    Clock,
+    Loader2,
+    Receipt,
+    Search,
+    X,
+} from 'lucide-react';
+import { FormEvent, useState } from 'react';
+import { toast } from 'sonner';
+import Heading from '@/components/heading';
+import TablePagination, { type PaginatedData } from '@/components/table-pagination';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -24,9 +49,13 @@ type ReturnRecord = {
     loan_id: number;
     return_date: string;
     fine: number;
+    damage_fine: number;
+    payment_status: 'paid' | 'unpaid';
     condition_note: string | null;
     loan: {
+        loan_code: string | null;
         borrower_name: string;
+        return_due_date: string | null;
         purpose: string;
     } | null;
     processed_by: {
@@ -34,84 +63,320 @@ type ReturnRecord = {
     } | null;
 };
 
-type Props = {
-    returns: ReturnRecord[];
+type Stats = {
+    total: number;
+    unpaid: number;
+    total_fine_unpaid: number;
 };
 
-export default function ReturnsIndex({ returns }: Props) {
+type Props = {
+    returns: PaginatedData<ReturnRecord>;
+    stats: Stats;
+    filters: { search?: string; payment_status?: string };
+};
+
+function formatRupiah(amount: number) {
+    return 'Rp ' + amount.toLocaleString('id-ID');
+}
+
+function formatDate(dateStr: string | null) {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
+function isLate(dueDate: string | null, returnDate: string): boolean {
+    if (!dueDate) return false;
+    return new Date(returnDate) > new Date(dueDate);
+}
+
+export default function ReturnsIndex({ returns, stats, filters }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const isAdminOrPetugas = auth.user?.roles?.some((r: any) => ['admin', 'petugas'].includes(r));
+
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [paymentFilter, setPaymentFilter] = useState(filters.payment_status ?? 'all');
+    const [payTarget, setPayTarget] = useState<ReturnRecord | null>(null);
+    const [paying, setPaying] = useState(false);
+
+    // ---------- Filter / Search ----------
+    const applyFilters = (overrides: Record<string, string | undefined> = {}) => {
+        router.get('/returns', {
+            search: overrides.search ?? (search || undefined),
+            payment_status: overrides.payment_status ?? (paymentFilter !== 'all' ? paymentFilter : undefined),
+        }, { preserveState: true, replace: true });
+    };
+
+    const handleSearch = (e: FormEvent) => {
+        e.preventDefault();
+        applyFilters({ search });
+    };
+
+    const handlePaymentFilter = (val: string) => {
+        setPaymentFilter(val);
+        applyFilters({ payment_status: val !== 'all' ? val : undefined });
+    };
+
+    const clearFilters = () => {
+        setSearch('');
+        setPaymentFilter('all');
+        router.get('/returns', {}, { preserveState: false, replace: true });
+    };
+
+    // ---------- Lunasi Denda ----------
+    const handlePayFine = () => {
+        if (!payTarget) return;
+        setPaying(true);
+        router.patch(`/returns/${payTarget.id}/pay-fine`, {}, {
+            onSuccess: () => {
+                toast.success('Denda berhasil dilunasi!');
+                setPayTarget(null);
+            },
+            onError: (errs) => {
+                toast.error(Object.values(errs)[0] as string ?? 'Gagal melunasi denda.');
+            },
+            onFinish: () => setPaying(false),
+        });
+    };
+
+    const hasActiveFilters = search || paymentFilter !== 'all';
 
     return (
         <div className="space-y-6 p-4 md:p-6 w-full max-w-full overflow-hidden">
+
+            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <Heading
                     title="Riwayat Pengembalian"
-                    description="Catatan komprehensif logistik pengembalian dan denda."
+                    description="Pengembalian alat, denda keterlambatan, dan status pelunasan."
                 />
             </div>
 
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="border-border/60 bg-card/50">
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-sky-100 dark:bg-sky-500/10">
+                            <Archive className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Total Pengembalian</p>
+                            <p className="text-2xl font-bold">{stats.total}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/60 bg-card/50">
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-500/10">
+                            <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Denda Belum Lunas</p>
+                            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{stats.unpaid}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/60 bg-card/50">
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-500/10">
+                            <CircleDollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Total Denda Tertunggak</p>
+                            <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                                {formatRupiah(stats.total_fine_unpaid)}
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-sm">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Cari nama peminjam / kode..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+                    <Button type="submit" size="sm" variant="outline">Cari</Button>
+                </form>
+
+                <Select value={paymentFilter} onValueChange={handlePaymentFilter}>
+                    <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Filter Status Denda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="unpaid">Belum Lunas</SelectItem>
+                        <SelectItem value="paid">Sudah Lunas</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground">
+                        <X className="h-4 w-4" /> Reset
+                    </Button>
+                )}
+            </div>
+
+            {/* Table */}
             <Card className="overflow-hidden border-border/60 bg-card/50 backdrop-blur-xl shadow-md">
-                <div className="overflow-x-auto pb-4">
-                    <Table className="min-w-[1000px]">
+                <div className="overflow-x-auto">
+                    <Table className="min-w-[900px]">
                         <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="w-[100px]">Loan ID</TableHead>
-                                <TableHead className="min-w-[200px]">Identitas Peminjam</TableHead>
-                                <TableHead className="min-w-[150px]">Tgl Pengembalian</TableHead>
-                                <TableHead>Denda (Rp)</TableHead>
-                                <TableHead className="min-w-[200px]">Catatan Kondisi</TableHead>
-                                <TableHead className="min-w-[150px]">Diproses Oleh</TableHead>
+                                <TableHead className="w-[130px]">Kode Pinjam</TableHead>
+                                <TableHead className="min-w-[180px]">Peminjam</TableHead>
+                                <TableHead>Tgl Kembali</TableHead>
+                                <TableHead>Keterlambatan</TableHead>
+                                <TableHead>Denda Lambat</TableHead>
+                                <TableHead>Denda Kerusakan</TableHead>
+                                <TableHead>Total & Status</TableHead>
+                                <TableHead>Diproses Oleh</TableHead>
+                                {isAdminOrPetugas && <TableHead className="text-right">Aksi</TableHead>}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {returns?.map((ret) => (
-                                <TableRow key={ret.id} className="group transition-colors">
-                                    <TableCell className="font-mono text-xs text-muted-foreground align-top">
-                                        #{ret.loan_id}
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                        <div className="flex flex-col gap-1">
-                                            <div className="flex items-center gap-2 font-medium">
-                                                <Receipt className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                                {ret.loan?.borrower_name ?? 'Data Terhapus'}
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">
-                                                {ret.loan?.purpose ?? '-'}
+                            {returns.data?.map((ret) => {
+                                const totalFine = (ret.fine ?? 0) + (ret.damage_fine ?? 0);
+                                const late = isLate(ret.loan?.return_due_date ?? null, ret.return_date);
+                                const unpaid = ret.payment_status === 'unpaid' && totalFine > 0;
+
+                                return (
+                                    <TableRow key={ret.id} className={`group transition-colors ${unpaid ? 'bg-rose-50/30 dark:bg-rose-500/5' : ''}`}>
+                                        {/* Kode */}
+                                        <TableCell className="align-top">
+                                            <span className="font-mono text-xs text-muted-foreground">
+                                                {ret.loan?.loan_code ?? `#${ret.loan_id}`}
                                             </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                        <span className="text-sm">
-                                            {ret.return_date}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                        {ret.fine > 0 ? (
-                                            <Badge variant="destructive" className="font-mono">
-                                                Rp {ret.fine.toLocaleString('id-ID')}
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="secondary" className="font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                                -
-                                            </Badge>
+                                        </TableCell>
+
+                                        {/* Peminjam */}
+                                        <TableCell className="align-top">
+                                            <div className="flex items-center gap-2 font-medium">
+                                                <Receipt className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span>{ret.loan?.borrower_name ?? 'Data terhapus'}</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-0.5 ml-6 line-clamp-1">
+                                                {ret.loan?.purpose ?? '-'}
+                                            </p>
+                                        </TableCell>
+
+                                        {/* Tgl Kembali */}
+                                        <TableCell className="align-top text-sm">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span>{formatDate(ret.return_date)}</span>
+                                                {ret.loan?.return_due_date && (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Batas: {formatDate(ret.loan.return_due_date)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        {/* Keterlambatan */}
+                                        <TableCell className="align-top">
+                                            {late ? (
+                                                <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 gap-1 text-xs">
+                                                    <Clock className="h-3 w-3" />
+                                                    Terlambat
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 gap-1 text-xs">
+                                                    <CheckCircle2 className="h-3 w-3" />
+                                                    Tepat Waktu
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Denda Keterlambatan */}
+                                        <TableCell className="align-top font-mono text-sm">
+                                            {ret.fine > 0 ? (
+                                                <span className="text-rose-600">{formatRupiah(ret.fine)}</span>
+                                            ) : (
+                                                <span className="text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Denda Kerusakan */}
+                                        <TableCell className="align-top font-mono text-sm">
+                                            {(ret.damage_fine ?? 0) > 0 ? (
+                                                <span className="text-orange-600">{formatRupiah(ret.damage_fine)}</span>
+                                            ) : (
+                                                <span className="text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Total & Status Bayar */}
+                                        <TableCell className="align-top">
+                                            <div className="flex flex-col gap-1">
+                                                {totalFine > 0 ? (
+                                                    <span className="font-bold font-mono text-sm text-rose-600">
+                                                        {formatRupiah(totalFine)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground font-mono text-sm">—</span>
+                                                )}
+
+                                                {totalFine > 0 && (
+                                                    ret.payment_status === 'paid' ? (
+                                                        <Badge className="w-fit gap-1 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                                            <BadgeCheck className="h-3 w-3" /> Lunas
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="w-fit gap-1 text-xs bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                                                            <AlertTriangle className="h-3 w-3" /> Belum Lunas
+                                                        </Badge>
+                                                    )
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        {/* Diproses Oleh */}
+                                        <TableCell className="align-top text-sm text-muted-foreground">
+                                            {ret.processed_by?.name ?? '-'}
+                                        </TableCell>
+
+                                        {/* Aksi */}
+                                        {isAdminOrPetugas && (
+                                            <TableCell className="align-top text-right">
+                                                {unpaid ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10"
+                                                        onClick={() => setPayTarget(ret)}
+                                                    >
+                                                        <CircleDollarSign className="h-3.5 w-3.5" />
+                                                        Lunasi
+                                                    </Button>
+                                                ) : totalFine > 0 ? (
+                                                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-end gap-1">
+                                                        <BadgeCheck className="h-3.5 w-3.5" /> Lunas
+                                                    </span>
+                                                ) : null}
+                                            </TableCell>
                                         )}
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                        <div className="text-sm text-balance max-w-xs">
-                                            {ret.condition_note || '-'}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="align-top text-sm">
-                                        {ret.processed_by?.name ?? '-'}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {(!returns || returns.length === 0) && (
+                                    </TableRow>
+                                );
+                            })}
+
+                            {(!returns.data || returns.data.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={isAdminOrPetugas ? 9 : 8} className="h-32 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center justify-center gap-2">
-                                            <Archive className="h-8 w-8 text-muted-foreground/50" />
-                                            Belum ada pengembalian alat.
+                                            <Archive className="h-8 w-8 text-muted-foreground/40" />
+                                            <span>Belum ada data pengembalian.</span>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -119,7 +384,74 @@ export default function ReturnsIndex({ returns }: Props) {
                         </TableBody>
                     </Table>
                 </div>
+
+                {/* Pagination */}
+                {returns.last_page > 1 && (
+                    <div className="border-t border-border/60 p-4">
+                        <TablePagination data={returns} />
+                    </div>
+                )}
             </Card>
+
+            {/* Dialog Konfirmasi Lunasi Denda */}
+            <Dialog open={!!payTarget} onOpenChange={(open) => !open && setPayTarget(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <CircleDollarSign className="h-5 w-5 text-emerald-600" />
+                            Konfirmasi Pelunasan Denda
+                        </DialogTitle>
+                        <DialogDescription>
+                            Pastikan pembayaran telah diterima sebelum mengkonfirmasi.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {payTarget && (
+                        <div className="space-y-4">
+                            <div className="rounded-xl border border-dashed border-border p-4 space-y-2 bg-muted/30">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Peminjam</span>
+                                    <span className="font-medium">{payTarget.loan?.borrower_name}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Denda Keterlambatan</span>
+                                    <span className="font-mono">{formatRupiah(payTarget.fine)}</span>
+                                </div>
+                                {(payTarget.damage_fine ?? 0) > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Denda Kerusakan</span>
+                                        <span className="font-mono text-orange-600">{formatRupiah(payTarget.damage_fine)}</span>
+                                    </div>
+                                )}
+                                <div className="border-t border-border pt-2 flex justify-between">
+                                    <span className="font-semibold">Total Denda</span>
+                                    <span className="font-bold text-lg font-mono text-rose-600">
+                                        {formatRupiah((payTarget.fine ?? 0) + (payTarget.damage_fine ?? 0))}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setPayTarget(null)} disabled={paying}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={handlePayFine}
+                            disabled={paying}
+                        >
+                            {paying ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                            )}
+                            {paying ? 'Memproses...' : 'Ya, Denda Lunas'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

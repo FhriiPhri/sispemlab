@@ -41,10 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:admin,petugas')->group(function () {
         Route::patch('loans/{loan}/status', [LoanController::class, 'updateStatus'])->name('loans.status.update');
         
-        Route::get('returns', function() {
-            return inertia('returns/index', ['returns' => \App\Models\ToolReturn::with(['loan.user', 'processedBy'])->latest()->get()]);
-        })->name('returns.index');
+        Route::get('returns', [\App\Http\Controllers\ReturnController::class, 'index'])->name('returns.index');
         Route::post('returns/process', [\App\Http\Controllers\ReturnController::class, 'store'])->name('returns.process');
+        Route::patch('returns/{return}/pay-fine', [\App\Http\Controllers\ReturnController::class, 'payFine'])->name('returns.pay-fine');
         
         Route::get('reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/print', [\App\Http\Controllers\ReportController::class, 'print'])->name('reports.print');
@@ -57,4 +56,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('loans/{loan}/return-request', [LoanController::class, 'returnRequest'])->name('loans.return-request');
 });
 
+// OTP Password Reset Flow (override Fortify default link-based reset)
+Route::middleware('guest')->group(function () {
+    // Step 1: Kirim OTP
+    Route::post('forgot-password/send-otp', [\App\Http\Controllers\OtpPasswordController::class, 'send'])
+        ->name('password.otp.send');
+
+    // Step 2: Verifikasi OTP
+    Route::get('forgot-password/verify', [\App\Http\Controllers\OtpPasswordController::class, 'showVerify'])
+        ->name('password.otp.verify.show');
+    Route::post('forgot-password/verify', [\App\Http\Controllers\OtpPasswordController::class, 'verify'])
+        ->name('password.otp.verify');
+
+    // Resend OTP
+    Route::post('forgot-password/resend', [\App\Http\Controllers\OtpPasswordController::class, 'resend'])
+        ->name('password.otp.resend');
+
+    // Step 3: Reset Password
+    Route::get('forgot-password/reset', [\App\Http\Controllers\OtpPasswordController::class, 'showReset'])
+        ->name('password.otp.reset.show');
+    Route::post('forgot-password/reset', [\App\Http\Controllers\OtpPasswordController::class, 'reset'])
+        ->name('password.otp.reset');
+});
+
 require __DIR__.'/settings.php';
+

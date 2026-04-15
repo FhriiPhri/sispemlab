@@ -38,6 +38,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import type { SharedData } from '@/types';
 
 type CategoryOption = {
@@ -89,6 +90,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+    const [detailTool, setDetailTool] = useState<Tool | null>(null);
 
     const createForm = useForm({
         category_id: '',
@@ -347,7 +349,15 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                         </TableHeader>
                         <TableBody>
                             {toolsList.map((tool) => (
-                                <TableRow key={tool.id} className="group transition-colors">
+                                <TableRow
+                                    key={tool.id}
+                                    className="group transition-colors cursor-pointer hover:bg-muted/50"
+                                    onClick={(e) => {
+                                        // Jangan buka detail jika klik tombol aksi
+                                        if ((e.target as HTMLElement).closest('button')) return;
+                                        setDetailTool(tool);
+                                    }}
+                                >
                                     <TableCell className="font-mono text-xs text-muted-foreground">
                                         {tool.code}
                                     </TableCell>
@@ -442,6 +452,119 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                             onSubmit={submitUpdate}
                             onCancel={() => setSelectedTool(null)}
                         />
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Detail Dialog */}
+            <Dialog open={!!detailTool} onOpenChange={(open) => !open && setDetailTool(null)}>
+                <DialogContent className="sm:max-w-3xl max-w-[96vw] p-0 overflow-hidden max-h-[92vh] flex flex-col">
+                    {detailTool && (
+                        <>
+                            {/* Hero Banner */}
+                            <div className="relative">
+                                {detailTool.image_url ? (
+                                    <div className="h-52 w-full overflow-hidden bg-muted">
+                                        <img
+                                            src={detailTool.image_url}
+                                            alt={detailTool.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                                    </div>
+                                ) : (
+                                    <div className="h-28 w-full bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
+                                )}
+
+                                {/* Overlay Header */}
+                                <div className={`absolute bottom-0 left-0 right-0 p-5 ${detailTool.image_url ? 'text-white' : ''}`}>
+                                    <div className="flex items-end justify-between gap-3">
+                                        <div>
+                                            <p className={`text-xs font-mono mb-1 ${detailTool.image_url ? 'text-white/70' : 'text-muted-foreground'}`}>
+                                                {detailTool.code}
+                                            </p>
+                                            <h2 className={`text-2xl font-bold leading-tight ${detailTool.image_url ? 'text-white' : 'text-foreground'}`}>
+                                                {detailTool.name}
+                                            </h2>
+                                            {detailTool.category_name && (
+                                                <p className={`text-sm mt-0.5 ${detailTool.image_url ? 'text-white/80' : 'text-muted-foreground'}`}>
+                                                    {detailTool.category_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Badge
+                                            variant="outline"
+                                            className={`capitalize shrink-0 text-sm px-3 py-1 font-semibold ${
+                                                detailTool.condition_status === 'baik'
+                                                    ? detailTool.image_url
+                                                        ? 'bg-emerald-500/90 text-white border-transparent'
+                                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-transparent'
+                                                    : detailTool.image_url
+                                                        ? 'bg-amber-500/90 text-white border-transparent'
+                                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-transparent'
+                                            }`}
+                                        >
+                                            {detailTool.condition_status}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Body */}
+                            <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                                {/* Stok Cards */}
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800 p-4 text-center">
+                                        <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400">{detailTool.stock_available}</p>
+                                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-1">Unit Tersedia</p>
+                                    </div>
+                                    <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
+                                        <p className="text-4xl font-black text-foreground">{detailTool.stock_total}</p>
+                                        <p className="text-xs text-muted-foreground font-medium mt-1">Total Unit</p>
+                                    </div>
+                                    <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-800 p-4 text-center">
+                                        <p className="text-4xl font-black text-rose-600 dark:text-rose-400">
+                                            {detailTool.stock_total - detailTool.stock_available}
+                                        </p>
+                                        <p className="text-xs text-rose-700 dark:text-rose-400 font-medium mt-1">Sedang Dipinjam</p>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Spesifikasi - 2 kolom */}
+                                <div>
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Spesifikasi</p>
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                        <div className="flex justify-between border-b border-border/40 pb-3">
+                                            <span className="text-muted-foreground">Merek</span>
+                                            <span className="font-semibold">{detailTool.brand ?? '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-border/40 pb-3">
+                                            <span className="text-muted-foreground">Kategori</span>
+                                            <span className="font-semibold">{detailTool.category_name ?? '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-border/40 pb-3">
+                                            <span className="text-muted-foreground">No. Seri</span>
+                                            <span className="font-semibold font-mono text-xs">{detailTool.serial_number ?? '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-border/40 pb-3">
+                                            <span className="text-muted-foreground">Lokasi</span>
+                                            <span className="font-semibold">{detailTool.location ?? '—'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {detailTool.description && (
+                                    <div>
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Deskripsi</p>
+                                        <p className="text-sm text-muted-foreground leading-relaxed bg-muted/30 rounded-xl p-4 border border-border/50">
+                                            {detailTool.description}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
