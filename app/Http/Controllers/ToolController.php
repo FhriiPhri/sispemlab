@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\ActivityLog;
 /**
  * Controller utama manajemen Inventaris Alat.
  * Menangani fungsi CRUD untuk master data alat yang tersedia di laboratorium.
@@ -72,6 +73,8 @@ class ToolController extends Controller
 
         Tool::query()->create($data);
 
+        ActivityLog::record('tambah_alat', "Mendaftarkan alat baru ke inventaris: {$data['name']}");
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Data alat berhasil ditambahkan.']);
 
         return to_route('tools.index');
@@ -99,6 +102,8 @@ class ToolController extends Controller
 
         $tool->update($data);
 
+        ActivityLog::record('update_alat', "Memperbarui spesifikasi alat: {$tool->name}");
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Data alat berhasil diperbarui.']);
 
         return to_route('tools.index');
@@ -124,7 +129,10 @@ class ToolController extends Controller
             Storage::disk('public')->delete($tool->image);
         }
 
+        $name = $tool->name;
         $tool->delete();
+
+        ActivityLog::record('hapus_alat', "Memusnahkan/menghapus alat dari sistem: {$name}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Data alat berhasil dihapus.']);
 

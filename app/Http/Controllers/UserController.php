@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Models\ActivityLog;
 
 /**
  * Pintu gerbang pengelolaan data Pengguna (Identity Management).
@@ -36,7 +37,9 @@ class UserController extends Controller
         ]);
 
         $validated['password'] = bcrypt($validated['password']);
-        User::create($validated);
+        $newUser = User::create($validated);
+
+        ActivityLog::record('buat_akun', 'Mendaftarkan satu akun baru: ' . $newUser->name);
 
         return back()->with('success', 'User berhasil ditambahkan.');
     }
@@ -61,6 +64,8 @@ class UserController extends Controller
 
         $user->update($validated);
 
+        ActivityLog::record('update_akun', "Memodifikasi data akun milik: {$user->name}");
+
         return back()->with('success', 'User berhasil diupdate.');
     }
 
@@ -69,7 +74,10 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        $name = $user->name;
         $user->delete();
+
+        ActivityLog::record('hapus_akun', "Melepas/menghapus akun milik: {$name}");
         return back()->with('success', 'User berhasil dihapus.');
     }
 }

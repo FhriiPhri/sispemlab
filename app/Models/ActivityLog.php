@@ -13,4 +13,18 @@ class ActivityLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Helper statis untuk menyisipkan histori aktifitas per pengguna.
+     */
+    public static function record(string $action, string $description): void
+    {
+        if (auth()->check()) {
+            self::create([
+                'user_id' => auth()->id(),
+                'action' => $action,
+                'description' => $description,
+            ]);
+        }
+    }
 }

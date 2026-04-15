@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\ActivityLog;
 
 /**
  * Controller utama pengelola alur Logistik Peminjaman Alat.
@@ -141,6 +142,8 @@ class LoanController extends Controller
             }
         });
 
+        ActivityLog::record('pengajuan_pinjam', "Mengajukan peminjaman baru atas nama: {$validated['borrower_name']}");
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengajuan peminjaman berhasil dibuat.']);
 
         return to_route('loans.index');
@@ -178,6 +181,8 @@ class LoanController extends Controller
                 'returned_at' => $nextStatus === 'returned' ? now() : null,
                 'notes' => $validated['notes'] ?? $loan->notes,
             ]);
+            
+            ActivityLog::record('update_status_pinjam', "Mengubah status peminjaman (ID: {$loan->id}) menjadi: {$nextStatus}");
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Status peminjaman berhasil diperbarui.']);
@@ -204,6 +209,8 @@ class LoanController extends Controller
         $loan->update([
             'notes' => trim($loan->notes . "\n\n[Sistem]: Peminjam telah mengajukan proses pengembalian alat. Silakan Petugas memeriksa fisik alat di lab."),
         ]);
+
+        ActivityLog::record('notifikasi_kembali', "Mengajukan pengembalian alat untuk transaksi peminjaman (ID: {$loan->id})");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Permintaan pengembalian terkirim. Silakan serahkan alat ke Petugas.']);
 

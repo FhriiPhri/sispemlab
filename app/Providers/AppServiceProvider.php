@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use App\Models\ActivityLog;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +28,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Mencatat aktivitas saat User Login
+        Event::listen(Login::class, function (Login $event) {
+            ActivityLog::record('login', 'Pengguna berhasil masuk ke sistem.');
+        });
+
+        // Mencatat aktivitas saat User Logout
+        Event::listen(Logout::class, function (Logout $event) {
+            ActivityLog::record('logout', 'Pengguna telah keluar dari sistem.');
+        });
     }
 
     /**
