@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Boxes, ClipboardList, LayoutGrid, Package, ScrollText, Users, Activity, Undo2, Printer } from 'lucide-react';
+import { Boxes, ClipboardList, LayoutGrid, Package, Users, Activity, Undo2, Printer } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -16,19 +15,6 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import type { NavItem, SharedData } from '@/types';
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Laravel 13',
-        href: 'https://laravel.com/docs/13.x',
-        icon: ScrollText,
-    },
-    {
-        title: 'Inertia React',
-        href: 'https://inertiajs.com/',
-        icon: ScrollText,
-    },
-];
 
 export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
@@ -85,7 +71,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
