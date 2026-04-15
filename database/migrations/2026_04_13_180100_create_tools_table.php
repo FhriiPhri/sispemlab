@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('tools', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('code')->unique();
+            $table->string('name');
+            $table->string('brand')->nullable();
+            $table->string('serial_number')->nullable();
+            $table->enum('condition_status', ['baik', 'perlu-servis', 'rusak-ringan', 'rusak-berat'])->default('baik');
+            $table->string('location')->nullable();
+            $table->unsignedInteger('stock_total')->default(0);
+            $table->unsignedInteger('stock_available')->default(0);
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('tools');
+    }
+};
