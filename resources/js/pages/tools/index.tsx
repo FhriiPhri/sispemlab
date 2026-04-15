@@ -1,8 +1,9 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
+import TablePagination, { type PaginatedData } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -62,7 +63,7 @@ type Tool = {
 };
 
 type Props = {
-    tools: Tool[];
+    tools: PaginatedData<Tool>;
     categories: CategoryOption[];
     stats: {
         total_tools: number;
@@ -84,6 +85,7 @@ const conditionOptions = [
 export default function ToolsIndex({ tools, categories, stats }: Props) {
     const { auth } = usePage<SharedData>().props;
     const isPeminjam = auth.user.role === 'peminjam';
+    const toolsList = tools.data;
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
@@ -159,7 +161,18 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                     'image'
                 );
                 setIsCreateOpen(false);
-            }
+                toast.success('Alat baru berhasil ditambahkan!');
+            },
+            onError: (errors) => {
+                const messages = Object.values(errors);
+                if (messages.length > 0) {
+                    toast.error(messages[0], {
+                        description: messages.length > 1
+                            ? `${messages.length - 1} field lain juga belum diisi dengan benar.`
+                            : undefined,
+                    });
+                }
+            },
         });
     };
 
@@ -175,7 +188,20 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
 
         editForm.post(`/tools/${selectedTool.id}`, {
             preserveScroll: true,
-            onSuccess: () => setSelectedTool(null),
+            onSuccess: () => {
+                setSelectedTool(null);
+                toast.success('Data alat berhasil diperbarui!');
+            },
+            onError: (errors) => {
+                const messages = Object.values(errors);
+                if (messages.length > 0) {
+                    toast.error(messages[0], {
+                        description: messages.length > 1
+                            ? `${messages.length - 1} field lain juga bermasalah.`
+                            : undefined,
+                    });
+                }
+            },
         });
     };
 
@@ -193,7 +219,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                     description="Daftar koleksi alat yang dapat dipinjam saat ini beserta rincian stoknya."
                 />
                 <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {tools.map((tool) => (
+                    {toolsList.map((tool) => (
                         <Card key={tool.id} className="flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 bg-card/60 backdrop-blur-sm overflow-hidden">
                             {tool.image_url && (
                                 <div className="aspect-[4/3] w-full overflow-hidden bg-muted border-b">
@@ -232,7 +258,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                             </CardContent>
                         </Card>
                     ))}
-                    {tools.length === 0 && (
+                    {toolsList.length === 0 && (
                          <div className="col-span-full rounded-[1.25rem] border border-dashed border-border py-12 text-center text-sm text-muted-foreground shadow-sm">
                             Katalog alat saat ini sedang kosong.
                          </div>
@@ -258,7 +284,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                 Tambah Alat
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
                             <DialogHeader>
                                 <DialogTitle>Registrasi Alat Baru</DialogTitle>
                                 <DialogDescription>
@@ -320,7 +346,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {tools.map((tool) => (
+                            {toolsList.map((tool) => (
                                 <TableRow key={tool.id} className="group transition-colors">
                                     <TableCell className="font-mono text-xs text-muted-foreground">
                                         {tool.code}
@@ -376,7 +402,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                     )}
                                 </TableRow>
                             ))}
-                            {tools.length === 0 && (
+                            {toolsList.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={auth.user.role === 'admin' ? 6 : 5} className="h-24 text-center text-muted-foreground">
                                         Belum ada data alat yang diinputkan ke sistem.
@@ -386,10 +412,22 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                         </TableBody>
                     </Table>
                 </div>
+                <TablePagination
+                    current_page={tools.current_page}
+                    last_page={tools.last_page}
+                    from={tools.from}
+                    to={tools.to}
+                    total={tools.total}
+                    next_page_url={tools.next_page_url}
+                    prev_page_url={tools.prev_page_url}
+                    first_page_url={tools.first_page_url}
+                    last_page_url={tools.last_page_url}
+                    links={tools.links}
+                />
             </Card>
 
             <Dialog open={!!selectedTool} onOpenChange={(open) => !open && setSelectedTool(null)}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
                     <DialogHeader>
                         <DialogTitle>Edit Alat</DialogTitle>
                         <DialogDescription>
@@ -445,7 +483,7 @@ function ToolForm({
                         value={form.data.category_id}
                         onValueChange={(value) => form.setData('category_id', value)}
                     >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className={`w-full ${form.errors.category_id ? 'border-red-500' : ''}`}>
                             <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                         <SelectContent>
@@ -459,16 +497,16 @@ function ToolForm({
                             ))}
                         </SelectContent>
                     </Select>
-                    <InputError message={form.errors.category_id} />
                 </div>
 
                 <div className="grid gap-2">
                     <Label>Kode alat</Label>
                     <Input
                         value={form.data.code}
+                        placeholder="Kosongkan untuk otomatis (Auto)"
+                        className={form.errors.code ? 'border-red-500' : ''}
                         onChange={(event) => form.setData('code', event.target.value)}
                     />
-                    <InputError message={form.errors.code} />
                 </div>
             </div>
 
@@ -477,9 +515,9 @@ function ToolForm({
                     <Label>Nama alat</Label>
                     <Input
                         value={form.data.name}
+                        className={form.errors.name ? 'border-red-500' : ''}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
-                    <InputError message={form.errors.name} />
                 </div>
 
                 <div className="grid gap-2">
@@ -488,7 +526,6 @@ function ToolForm({
                         value={form.data.brand}
                         onChange={(event) => form.setData('brand', event.target.value)}
                     />
-                    <InputError message={form.errors.brand} />
                 </div>
             </div>
 
@@ -501,7 +538,6 @@ function ToolForm({
                             form.setData('serial_number', event.target.value)
                         }
                     />
-                    <InputError message={form.errors.serial_number} />
                 </div>
 
                 <div className="grid gap-2">
@@ -523,7 +559,6 @@ function ToolForm({
                             ))}
                         </SelectContent>
                     </Select>
-                    <InputError message={form.errors.condition_status} />
                 </div>
             </div>
 
@@ -536,7 +571,6 @@ function ToolForm({
                             form.setData('location', event.target.value)
                         }
                     />
-                    <InputError message={form.errors.location} />
                 </div>
                 <div className="grid gap-2">
                     <Label>Stok total</Label>
@@ -544,11 +578,11 @@ function ToolForm({
                         type="number"
                         min={0}
                         value={form.data.stock_total}
+                        className={form.errors.stock_total ? 'border-red-500' : ''}
                         onChange={(event) =>
                             form.setData('stock_total', Number(event.target.value))
                         }
                     />
-                    <InputError message={form.errors.stock_total} />
                 </div>
                 <div className="grid gap-2">
                     <Label>Stok tersedia</Label>
@@ -556,6 +590,7 @@ function ToolForm({
                         type="number"
                         min={0}
                         value={form.data.stock_available}
+                        className={form.errors.stock_available ? 'border-red-500' : ''}
                         onChange={(event) =>
                             form.setData(
                                 'stock_available',
@@ -563,7 +598,6 @@ function ToolForm({
                             )
                         }
                     />
-                    <InputError message={form.errors.stock_available} />
                 </div>
             </div>
 
@@ -576,7 +610,6 @@ function ToolForm({
                         form.setData('description', event.target.value)
                     }
                 />
-                <InputError message={form.errors.description} />
             </div>
 
             <div className="grid gap-2">
@@ -588,7 +621,6 @@ function ToolForm({
                         form.setData('image', e.target.files ? e.target.files[0] : null)
                     }
                 />
-                <InputError message={form.errors.image} />
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t">

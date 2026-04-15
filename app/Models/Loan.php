@@ -22,6 +22,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Loan extends Model
 {
     /**
+     * Boot logic untuk template Auto Generate Invoice `loan_code`.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Loan $loan) {
+            if (empty($loan->loan_code)) {
+                $datePrefix = date('Ymd');
+                $countToday = static::whereDate('created_at', date('Y-m-d'))->count();
+                $loan->loan_code = 'TRX-' . $datePrefix . '-' . str_pad($countToday + 1, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

@@ -28,8 +28,8 @@ class ToolController extends Controller
         $tools = Tool::query()
             ->with('category:id,name')
             ->orderBy('name')
-            ->get()
-            ->map(fn (Tool $tool): array => [
+            ->paginate(15)
+            ->through(fn (Tool $tool): array => [
                 'id' => $tool->id,
                 'category_id' => $tool->category_id,
                 'category_name' => $tool->category?->name,
@@ -50,9 +50,9 @@ class ToolController extends Controller
             'tools' => $tools,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'stats' => [
-                'total_tools' => $tools->count(),
-                'available_units' => (int) $tools->sum('stock_available'),
-                'need_attention' => $tools->whereIn('condition_status', ['perlu-servis', 'rusak-ringan', 'rusak-berat'])->count(),
+                'total_tools' => Tool::count(),
+                'available_units' => (int) Tool::sum('stock_available'),
+                'need_attention' => Tool::whereIn('condition_status', ['perlu-servis', 'rusak-ringan', 'rusak-berat'])->count(),
             ],
         ]);
     }

@@ -2,6 +2,7 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import Heading from '@/components/heading';
+import TablePagination, { type PaginatedData } from '@/components/table-pagination';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ type User = {
 };
 
 type Props = {
-    users: User[];
+    users: PaginatedData<User>;
 };
 
 const roleClasses: Record<string, string> = {
@@ -59,6 +60,7 @@ const roleClasses: Record<string, string> = {
 export default function UsersIndex({ users }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const usersList = users.data;
 
     const createForm = useForm({
         name: '',
@@ -214,7 +216,7 @@ export default function UsersIndex({ users }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {users.map((user) => (
+                            {usersList.map((user) => (
                                 <TableRow key={user.id} className="group transition-colors">
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
@@ -256,7 +258,7 @@ export default function UsersIndex({ users }: Props) {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {users.length === 0 && (
+                            {usersList.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                                         Belum ada data pengguna.
@@ -266,6 +268,18 @@ export default function UsersIndex({ users }: Props) {
                         </TableBody>
                     </Table>
                 </div>
+                <TablePagination
+                    current_page={users.current_page}
+                    last_page={users.last_page}
+                    from={users.from}
+                    to={users.to}
+                    total={users.total}
+                    next_page_url={users.next_page_url}
+                    prev_page_url={users.prev_page_url}
+                    first_page_url={users.first_page_url}
+                    last_page_url={users.last_page_url}
+                    links={users.links}
+                />
             </Card>
 
             <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>

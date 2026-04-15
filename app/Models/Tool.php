@@ -23,6 +23,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Tool extends Model
 {
     /**
+     * Boot logic untuk template Auto Generate `code`.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Tool $tool) {
+            if (empty($tool->code)) {
+                $latestId = static::max('id') ?? 0;
+                $tool->code = 'ALAT-' . date('y') . '-' . str_pad($latestId + 1, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
+    /**
      * @return BelongsTo<Category, $this>
      */
     public function category(): BelongsTo

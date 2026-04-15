@@ -1,8 +1,9 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { ClipboardList, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import { toast } from 'sonner';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
+import TablePagination, { type PaginatedData } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ import type { SharedData } from '@/types';
 
 type Loan = {
     id: number;
+    loan_code: string | null;
     borrower_name: string;
     borrower_identifier: string | null;
     borrower_phone: string | null;
@@ -71,7 +73,7 @@ type ToolOption = {
 };
 
 type Props = {
-    loans: Loan[];
+    loans: PaginatedData<Loan>;
     tools: ToolOption[];
     stats: {
         pending: number;
@@ -94,6 +96,7 @@ const statusClasses: Record<string, string> = {
 export default function LoansIndex({ loans, tools, stats }: Props) {
     const { auth } = usePage<SharedData>().props;
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const loansList = loans.data;
     
     const form = useForm({
         borrower_name: '',
@@ -129,7 +132,18 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                     'items',
                 );
                 setIsCreateOpen(false);
-            }
+                toast.success('Pengajuan peminjaman berhasil dibuat!');
+            },
+            onError: (errors) => {
+                const messages = Object.values(errors);
+                if (messages.length > 0) {
+                    toast.error(messages[0], {
+                        description: messages.length > 1
+                            ? `${messages.length - 1} field lain juga bermasalah.`
+                            : undefined,
+                    });
+                }
+            },
         });
     };
 
@@ -162,7 +176,7 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                             Buat Pengajuan
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="sm:max-w-4xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
                         <DialogHeader>
                             <DialogTitle>Buat Pengajuan Baru</DialogTitle>
                             <DialogDescription>
@@ -175,22 +189,22 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                     <Label>Nama peminjam</Label>
                                     <Input
                                         value={form.data.borrower_name}
+                                        className={form.errors.borrower_name ? 'border-red-500' : ''}
                                         onChange={(event) =>
                                             form.setData('borrower_name', event.target.value)
                                         }
                                         autoComplete="off"
                                     />
-                                    <InputError message={form.errors.borrower_name} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Identitas (NIP/NIS)</Label>
                                     <Input
                                         value={form.data.borrower_identifier}
+                                        className={form.errors.borrower_identifier ? 'border-red-500' : ''}
                                         onChange={(event) =>
                                             form.setData('borrower_identifier', event.target.value)
                                         }
                                     />
-                                    <InputError message={form.errors.borrower_identifier} />
                                 </div>
                             </div>
 
@@ -199,21 +213,21 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                     <Label>No. telepon</Label>
                                     <Input
                                         value={form.data.borrower_phone}
+                                        className={form.errors.borrower_phone ? 'border-red-500' : ''}
                                         onChange={(event) =>
                                             form.setData('borrower_phone', event.target.value)
                                         }
                                     />
-                                    <InputError message={form.errors.borrower_phone} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Keperluan</Label>
                                     <Input
                                         value={form.data.purpose}
+                                        className={form.errors.purpose ? 'border-red-500' : ''}
                                         onChange={(event) =>
                                             form.setData('purpose', event.target.value)
                                         }
                                     />
-                                    <InputError message={form.errors.purpose} />
                                 </div>
                             </div>
 
@@ -223,22 +237,22 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                     <Input
                                         type="datetime-local"
                                         value={form.data.loan_date}
+                                        className={form.errors.loan_date ? 'border-red-500' : ''}
                                         onChange={(event) =>
                                             form.setData('loan_date', event.target.value)
                                         }
                                     />
-                                    <InputError message={form.errors.loan_date} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Batas Waktu Pengembalian</Label>
                                     <Input
                                         type="datetime-local"
                                         value={form.data.return_due_date}
+                                        className={form.errors.return_due_date ? 'border-red-500' : ''}
                                         onChange={(event) =>
                                             form.setData('return_due_date', event.target.value)
                                         }
                                     />
-                                    <InputError message={form.errors.return_due_date} />
                                 </div>
                             </div>
 
@@ -251,7 +265,6 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                         form.setData('notes', event.target.value)
                                     }
                                 />
-                                <InputError message={form.errors.notes} />
                             </div>
 
                             <div className="space-y-3 pt-4 border-t">
@@ -354,7 +367,6 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                     </div>
                                 ))}
 
-                                <InputError message={form.errors.items} />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-4 border-t mt-6">
@@ -405,7 +417,7 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {loans.map((loan) => (
+                            {loansList.map((loan) => (
                                 <TableRow key={loan.id} className="group transition-colors">
                                     <TableCell className="align-top">
                                         <div className="flex flex-col gap-1">
@@ -413,9 +425,16 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                                 <ClipboardList className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                                 {loan.borrower_name}
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
-                                                {loan.purpose}
-                                            </span>
+                                            {(loan.loan_code || loan.purpose) && (
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                    {loan.loan_code && (
+                                                        <Badge variant="outline" className="font-mono text-[10px] px-1 py-0 border-primary/20 text-primary">
+                                                            {loan.loan_code}
+                                                        </Badge>
+                                                    )}
+                                                    <span>{loan.purpose}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="align-top">
@@ -505,7 +524,7 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {loans.length === 0 && (
+                            {loansList.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                                         Belum ada history peminjaman.
@@ -515,6 +534,18 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                         </TableBody>
                     </Table>
                 </div>
+                <TablePagination
+                    current_page={loans.current_page}
+                    last_page={loans.last_page}
+                    from={loans.from}
+                    to={loans.to}
+                    total={loans.total}
+                    next_page_url={loans.next_page_url}
+                    prev_page_url={loans.prev_page_url}
+                    first_page_url={loans.first_page_url}
+                    last_page_url={loans.last_page_url}
+                    links={loans.links}
+                />
             </Card>
         </div>
     );

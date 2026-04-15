@@ -36,9 +36,10 @@ class LoanController extends Controller
                 $query->where('user_id', auth()->id());
             })
             ->latest()
-            ->get()
-            ->map(fn (Loan $loan): array => [
+            ->paginate(10)
+            ->through(fn (Loan $loan): array => [
                 'id' => $loan->id,
+                'loan_code' => $loan->loan_code,
                 'borrower_name' => $loan->borrower_name,
                 'borrower_identifier' => $loan->borrower_identifier,
                 'borrower_phone' => $loan->borrower_phone,
@@ -59,6 +60,14 @@ class LoanController extends Controller
                 ])->all(),
             ]);
 
+        $allLoans = Loan::query()
+            ->when(auth()->user()->role === 'peminjam', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $tools = Tool::query()
             ->with('category:id,name')
             ->orderBy('name')
@@ -76,9 +85,9 @@ class LoanController extends Controller
             'loans' => $loans,
             'tools' => $tools,
             'stats' => [
-                'pending' => $loans->where('status', 'pending')->count(),
-                'active' => $loans->whereIn('status', ['approved', 'borrowed'])->count(),
-                'returned' => $loans->where('status', 'returned')->count(),
+                'pending' => (int) ($allLoans['pending'] ?? 0),
+                'active' => (int) ($allLoans['approved'] ?? 0) + (int) ($allLoans['borrowed'] ?? 0),
+                'returned' => (int) ($allLoans['returned'] ?? 0),
             ],
         ]);
     }

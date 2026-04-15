@@ -19,7 +19,7 @@ class StoreToolRequest extends FormRequest
     {
         return [
             'category_id' => ['nullable', 'exists:categories,id'],
-            'code' => ['required', 'string', 'max:50', Rule::unique('tools', 'code')],
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('tools', 'code')],
             'name' => ['required', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'brand' => ['nullable', 'string', 'max:255'],

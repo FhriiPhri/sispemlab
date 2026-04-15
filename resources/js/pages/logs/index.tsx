@@ -1,5 +1,6 @@
 import { Activity, Clock } from 'lucide-react';
 import Heading from '@/components/heading';
+import TablePagination, { type PaginatedData } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import {
     Card,
@@ -29,10 +30,11 @@ type LogRecord = {
 };
 
 type Props = {
-    logs: LogRecord[];
+    logs: PaginatedData<LogRecord>;
 };
 
 export default function LogsIndex({ logs }: Props) {
+    const logsList = logs.data;
     return (
         <div className="space-y-6 p-4 md:p-6 w-full max-w-full overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -54,7 +56,7 @@ export default function LogsIndex({ logs }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {logs?.map((log) => (
+                            {logsList?.map((log) => (
                                 <TableRow key={log.id} className="group transition-colors">
                                     <TableCell className="align-top whitespace-nowrap">
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -91,7 +93,7 @@ export default function LogsIndex({ logs }: Props) {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {(!logs || logs.length === 0) && (
+                            {(!logsList || logsList.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center justify-center gap-2">
@@ -104,6 +106,18 @@ export default function LogsIndex({ logs }: Props) {
                         </TableBody>
                     </Table>
                 </div>
+                <TablePagination
+                    current_page={logs.current_page}
+                    last_page={logs.last_page}
+                    from={logs.from}
+                    to={logs.to}
+                    total={logs.total}
+                    next_page_url={logs.next_page_url}
+                    prev_page_url={logs.prev_page_url}
+                    first_page_url={logs.first_page_url}
+                    last_page_url={logs.last_page_url}
+                    links={logs.links}
+                />
             </Card>
         </div>
     );

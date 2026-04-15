@@ -33,7 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // Activity Logs
         Route::get('logs', function() {
-            return inertia('logs/index', ['logs' => \App\Models\ActivityLog::with('user')->latest()->get()]);
+            return inertia('logs/index', ['logs' => \App\Models\ActivityLog::with('user')->latest()->paginate(20)]);
         })->name('logs.index');
     });
 
