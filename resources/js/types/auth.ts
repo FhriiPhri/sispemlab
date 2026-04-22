@@ -8,6 +8,10 @@ export type User = {
     created_at: string;
     updated_at: string;
     role: 'admin' | 'petugas' | 'peminjam';
+    identifier: string | null; // NIS / NIP
+    phone: string | null;
+    class: string | null;      // Kelas
+    major: string | null;      // Jurusan
     [key: string]: unknown;
 };
 

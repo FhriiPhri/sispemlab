@@ -10,33 +10,37 @@ type Props = {
 };
 
 export default function VerifyOtp({ email, status }: Props) {
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const [processing, setProcessing] = useState(false);
-    const [resending, setResending] = useState(false);
-    const [countdown, setCountdown] = useState(60);
-    const inputs = useRef<Array<HTMLInputElement | null>>([]);
+    const [otp, setOtp] = useState(['', '', '', '', '', '']); // State untuk menampung 6 digit kode OTP
+    const [processing, setProcessing] = useState(false); // Status loading saat verifikasi
+    const [resending, setResending] = useState(false); // Status loading saat kirim ulang
+    const [countdown, setCountdown] = useState(60); // Waktu tunggu kirim ulang (60 detik)
+    const inputs = useRef<Array<HTMLInputElement | null>>([]); // Referensi ke elemen input untuk auto-focus
 
-    // Countdown timer
+    // Efek untuk menjalankan timer hitung mundur
     useEffect(() => {
         if (countdown <= 0) return;
         const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
         return () => clearTimeout(t);
     }, [countdown]);
 
+    // Menangani perubahan input pada setiap kotak digit
     const handleChange = (idx: number, val: string) => {
-        if (!/^\d?$/.test(val)) return;
+        if (!/^\d?$/.test(val)) return; // Hanya izinkan angka
         const next = [...otp];
         next[idx] = val;
         setOtp(next);
+        // Pindah fokus ke kotak berikutnya jika digit diisi
         if (val && idx < 5) inputs.current[idx + 1]?.focus();
     };
 
+    // Menangani tombol Backspace untuk kembali ke kotak sebelumnya
     const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
             inputs.current[idx - 1]?.focus();
         }
     };
 
+    // Menangani proses Copy-Paste kode 6 digit
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
         const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
@@ -45,6 +49,7 @@ export default function VerifyOtp({ email, status }: Props) {
         inputs.current[Math.min(paste.length, 5)]?.focus();
     };
 
+    // Mengirimkan kode OTP ke server untuk verifikasi
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const code = otp.join('');
@@ -56,21 +61,23 @@ export default function VerifyOtp({ email, status }: Props) {
         setProcessing(true);
         router.post('/forgot-password/verify', { email, otp: code }, {
             onError: (errs) => {
+                // Tampilkan pesan error spesifik dari server (misal: "Kode Salah")
                 toast.error(errs.otp ?? 'OTP tidak valid atau kadaluarsa.');
-                setOtp(['', '', '', '', '', '']);
+                setOtp(['', '', '', '', '', '']); // Reset input jika salah
                 inputs.current[0]?.focus();
             },
             onFinish: () => setProcessing(false),
         });
     };
 
+    // Menangani permintaan kirim ulang kode OTP baru
     const handleResend = () => {
         setResending(true);
         router.post('/forgot-password/resend', { email }, {
             onSuccess: () => {
                 toast.success('OTP baru telah dikirim!');
-                setCountdown(60);
-                setOtp(['', '', '', '', '', '']);
+                setCountdown(60); // Reset timer
+                setOtp(['', '', '', '', '', '']); // Bersihkan input lama
             },
             onError: () => toast.error('Gagal mengirim ulang OTP.'),
             onFinish: () => setResending(false),

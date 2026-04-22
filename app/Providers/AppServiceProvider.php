@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use App\Models\ActivityLog;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (str_contains(config('app.url'), 'ngrok-free.app') || env('APP_ENV') !== 'local') {
+            URL::forceScheme('https');
+        }
         $this->configureDefaults();
 
         // Mencatat aktivitas saat User Login

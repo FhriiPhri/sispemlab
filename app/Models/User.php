@@ -12,7 +12,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+/**
+ * Model User: Mengelola data identitas pengguna (Admin, Petugas, Siswa).
+ * Dilengkapi dengan kolom tambahan untuk identitas SMK (NIS, Kelas, Jurusan).
+ */
+#[Fillable(['name', 'email', 'password', 'role', 'identifier', 'phone', 'class', 'major'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -20,7 +24,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
-     * Get the attributes that should be cast.
+     * Mengatur casting tipe data untuk kolom tertentu.
      *
      * @return array<string, string>
      */
@@ -34,6 +38,7 @@ class User extends Authenticatable
     }
 
     /**
+     * Relasi ke tabel Peminjaman (Satu User bisa punya banyak Peminjaman).
      * @return HasMany<Loan, $this>
      */
     public function loans(): HasMany

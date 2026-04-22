@@ -42,14 +42,14 @@ class ReturnController extends Controller
 
         $returns = $query->paginate(10)->withQueryString();
 
-        // Summary stats
+        // Statistik ringkasan untuk dashboard pengembalian
         $stats = [
             'total'    => ToolReturn::count(),
-            'unpaid'   => ToolReturn::where('payment_status', 'unpaid')->where('fine', '>', 0)->orWhere(function($q) {
-                $q->where('payment_status', 'unpaid')->where('damage_fine', '>', 0);
-            })->count(),
+            'unpaid'   => ToolReturn::where('payment_status', 'unpaid')
+                ->whereRaw('(fine > 0 OR damage_fine > 0)')
+                ->count(),
             'total_fine_unpaid' => ToolReturn::where('payment_status', 'unpaid')
-                ->selectRaw('SUM(fine + damage_fine) as total')->value('total') ?? 0,
+                ->sum(DB::raw('fine + damage_fine')),
         ];
 
         return inertia('returns/index', [

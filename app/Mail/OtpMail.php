@@ -24,7 +24,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '[SispemLab] Kode OTP Reset Password Anda',
+            subject: '[SispemTB] Kode OTP Reset Password Anda',
         );
     }
 

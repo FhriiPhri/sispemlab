@@ -22,4 +22,7 @@ export default defineConfig({
             formVariants: true,
         }),
     ],
+    server: {
+        host: 'localhost', port: 5173,
+    },
 });

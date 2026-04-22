@@ -108,9 +108,9 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
     const loansList = loans.data;
     
     const form = useForm({
-        borrower_name: '',
-        borrower_identifier: '',
-        borrower_phone: '',
+        borrower_name: auth.user.name || '',
+        borrower_identifier: auth.user.identifier || '',
+        borrower_phone: auth.user.phone || '',
         purpose: '',
         loan_date: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
         return_due_date: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000 + 3600000).toISOString().slice(0, 16),
@@ -203,6 +203,8 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                             form.setData('borrower_name', event.target.value)
                                         }
                                         autoComplete="off"
+                                        disabled
+                                        readOnly
                                     />
                                 </div>
                                 <div className="grid gap-2">
@@ -213,6 +215,8 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                         onChange={(event) =>
                                             form.setData('borrower_identifier', event.target.value)
                                         }
+                                        disabled
+                                        readOnly
                                     />
                                 </div>
                             </div>
@@ -226,6 +230,9 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                         onChange={(event) =>
                                             form.setData('borrower_phone', event.target.value)
                                         }
+                                        disabled
+                                        readOnly
+                                        placeholder="Terisi otomatis dari profil..."
                                     />
                                 </div>
                                 <div className="grid gap-2">

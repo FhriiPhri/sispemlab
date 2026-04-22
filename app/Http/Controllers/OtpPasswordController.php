@@ -58,8 +58,10 @@ class OtpPasswordController extends Controller
         // Kirim email OTP
         Mail::to($email)->send(new OtpMail(otp: $otp, userName: $user->name));
 
+        // Simpan email ke session agar tetap ada saat back() atau refresh
+        session(['otp_email' => $email]);
+
         return redirect()->route('password.otp.verify.show')
-            ->with('otp_email', $email)
             ->with('status', "OTP telah dikirim ke {$email}. Cek inbox atau spam Anda.");
     }
 
@@ -70,7 +72,7 @@ class OtpPasswordController extends Controller
      */
     public function showVerify(Request $request): Response|RedirectResponse
     {
-        $email = session('otp_email') ?? $request->query('email');
+        $email = $request->query('email') ?? session('otp_email') ?? old('email');
 
         if (! $email) {
             return redirect()->route('password.request');
@@ -104,9 +106,18 @@ class OtpPasswordController extends Controller
             ->first();
 
         if (! $record) {
+            // Berikan pesan spesifik jika expired
+            $isExpired = DB::table('password_reset_otps')
+                ->where('email', $email)
+                ->where('otp', $request->otp)
+                ->where('expires_at', '<=', now())
+                ->exists();
+
+            $errorMsg = $isExpired ? 'Kode OTP sudah kadaluarsa. Silakan kirim ulang.' : 'Kode OTP salah. Silakan coba lagi.';
+
             return back()
                 ->withInput()
-                ->withErrors(['otp' => 'Kode OTP tidak valid atau sudah kadaluarsa.']);
+                ->withErrors(['otp' => $errorMsg]);
         }
 
         // Tandai OTP sebagai sudah dipakai
@@ -210,8 +221,9 @@ class OtpPasswordController extends Controller
 
         Mail::to($email)->send(new OtpMail(otp: $otp, userName: $user->name));
 
+        session(['otp_email' => $email]);
+
         return back()
-            ->with('otp_email', $email)
             ->with('status', 'OTP baru telah dikirim ulang ke ' . $email . '.');
     }
 }

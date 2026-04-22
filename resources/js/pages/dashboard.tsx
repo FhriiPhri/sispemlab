@@ -45,6 +45,7 @@ type DashboardProps = {
     }>;
 };
 
+// Pengaturan kartu statistik di bagian atas dashboard
 const statCards = [
     {
         key: 'total_tools',
@@ -72,6 +73,7 @@ const statCards = [
     },
 ] as const;
 
+// Pemetaan kelas warna Tailwind berdasarkan status peminjaman
 const statusClasses: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300',
     approved: 'bg-sky-100 text-sky-800 dark:bg-sky-500/10 dark:text-sky-300',
@@ -81,6 +83,7 @@ const statusClasses: Record<string, string> = {
     draft: 'bg-slate-200 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300',
 };
 
+// Fungsi pembantu untuk menerjemahkan status teknis ke bahasa manusia
 const formatStatus = (value: string) =>
     ({
         pending: 'Pending',
@@ -91,6 +94,10 @@ const formatStatus = (value: string) =>
         draft: 'Draft',
     })[value] ?? value;
 
+/**
+ * Komponen utama Dashboard
+ * Menampilkan ringkasan operasional sarpras sekolah.
+ */
 export default function Dashboard({
     stats,
     statusBreakdown,
@@ -102,6 +109,7 @@ export default function Dashboard({
             <Head title="Dashboard Operasional" />
 
             <div className="flex flex-1 flex-col gap-6 rounded-[1.75rem] p-4 md:p-6">
+                {/* Bagian Banner Ucapan Selamat Datang / Informasi Strategis */}
                 <section className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-[linear-gradient(135deg,var(--color-primary)_0%,#1e3a8a_52%,var(--color-primary)_100%)] px-6 py-8 text-white shadow-xl shadow-slate-900/10">
                     <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
                     <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
@@ -121,6 +129,7 @@ export default function Dashboard({
                             </p>
                         </div>
 
+                        {/* List Fokus Pengembangan (Bisa dihilangkan jika sudah selesai) */}
                         <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-white/8 p-4 backdrop-blur">
                             <p className="text-sm text-slate-200">
                                 Fokus sprint berikutnya
@@ -138,6 +147,7 @@ export default function Dashboard({
                     </div>
                 </section>
 
+                {/* Baris Kartu Statistik (Metrik Utama) */}
                 <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {statCards.map((card) => {
                         const value = stats[card.key];

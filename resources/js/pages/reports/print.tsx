@@ -96,15 +96,15 @@ export default function ReportsPrint({ start_date, end_date, type, loans, return
 
     return (
         <div className="bg-white text-black min-h-screen">
-            <Head title="Cetak Laporan - SispemLab" />
+            <Head title="Cetak Laporan - SispemTB" />
             
             {/* Print Container that mimics A4 width mostly */}
             <div className="max-w-[21cm] mx-auto py-8 px-4 sm:px-8 print:py-[1.5cm] print:px-[1.5cm] print:mx-0 print:max-w-none">
                 {/* Header Kop Surat */}
                 <div className="text-center border-b-4 border-double border-black pb-4 mb-6">
-                    <h1 className="text-2xl font-bold uppercase tracking-wider">SispemLab</h1>
-                    <p className="text-sm mt-1">Jalan Cisadane V, No. 101B, Abadijaya Sukmajaya Kota Depok</p>
-                    <p className="text-sm">Email: admin@alatkampus.test | Telepon: 021 1210672183</p>
+                    <h1 className="text-2xl font-bold uppercase tracking-wider">SispemTB</h1>
+                    <p className="text-sm mt-1">Jl. Pekapuran No.37, Kec. Cimanggis, Kota Depok</p>
+                    <p className="text-sm">Email: admin@smktarunabhakti.sch.id | Telepon: 021 7401919</p>
                 </div>
 
                 {/* Judul Laporan */}

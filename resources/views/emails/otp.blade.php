@@ -25,8 +25,8 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>🔐 SispemLab</h1>
-            <p>Sistem Peminjaman Alat Laboratorium</p>
+            <h1>🔐 SispemTB</h1>
+            <p>Sistem Peminjaman Alat SMK TB</p>
         </div>
         <div class="body">
             <p class="greeting">Halo, {{ $userName }}!</p>
@@ -42,7 +42,7 @@
             </div>
 
             <div class="warning">
-                ⚠️ <strong>Jangan bagikan kode ini</strong> kepada siapapun! Tim SispemLab tidak akan pernah meminta kode OTP Anda.
+                ⚠️ <strong>Jangan bagikan kode ini</strong> kepada siapapun! Tim SispemTB tidak akan pernah meminta kode OTP Anda.
             </div>
 
             <p class="info" style="font-size: 13px;">
@@ -50,7 +50,7 @@
             </p>
         </div>
         <div class="footer">
-            &copy; {{ date('Y') }} SispemLab &mdash; Sistem Peminjaman Alat Lab<br>
+            &copy; {{ date('Y') }} SispemTB &mdash; Sistem Peminjaman Alat SMK Taruna Bhakti<br>
             Email ini dikirim secara otomatis, harap tidak membalas.
         </div>
     </div>

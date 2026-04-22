@@ -2,7 +2,6 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { 
     ArrowRight, 
     Boxes, 
-    ClipboardCheck, 
     ShieldCheck, 
     Activity,
     FileText,
@@ -11,6 +10,7 @@ import {
     Zap,
     History
 } from 'lucide-react';
+import AppLogoIcon from '@/components/app-logo-icon';
 import { dashboard } from '@/routes';
 
 export default function Landing({
@@ -94,11 +94,11 @@ export default function Landing({
                 {/* Navbar */}
                 <nav className="fixed inset-x-0 top-0 z-50 flex items-center justify-between border-b border-white/20 bg-white/60 px-6 py-4 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60 lg:px-12">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-lg">
-                            <ClipboardCheck className="h-5 w-5" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-transparent text-white">
+                            <AppLogoIcon className="h-9 w-9" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold tracking-tight">SispemLab</h1>
+                            <h1 className="text-lg font-bold tracking-tight">SispemTB</h1>
                         </div>
                     </div>
 
@@ -130,11 +130,11 @@ export default function Landing({
                                     Versi Enterprise Siap Digunakan
                                 </div>
                                 <h2 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
-                                    Kelola Alat Lab <br/>
+                                    Kelola Alat Sekolah <br/>
                                     <span className="bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">Tanpa Ribet.</span>
                                 </h2>
                                 <p className="text-lg text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
-                                    Tinggalkan pencatatan manual. SispemLab memberikan Anda kendali penuh atas inventaris, pelacakan peminjaman alat, hingga pelaporan otomatis secara *real-time*.
+                                    Tinggalkan pencatatan manual. SispemTB memberikan Anda kendali penuh atas inventaris, pelacakan peminjaman alat, hingga pelaporan otomatis secara *real-time*.
                                 </p>
                                 
                                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -205,7 +205,7 @@ export default function Landing({
                         <div className="text-center mb-16 space-y-4">
                             <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">Alur Peminjaman yang Jelas</h2>
                             <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
-                                SispemLab merampingkan birokrasi peminjaman manual menjadi alur digital yang mudah dipantau oleh setiap pihak.
+                                SispemTB merampingkan birokrasi peminjaman manual menjadi alur digital yang mudah dipantau oleh setiap pihak.
                             </p>
                         </div>
                         
@@ -232,7 +232,7 @@ export default function Landing({
                                 <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">Lebih dari Sekedar Mencatat</h2>
                             </div>
                             <p className="flex-1 text-slate-600 dark:text-slate-400 text-lg">
-                                Didesain khusus untuk memenuhi tata kelola aset fisik di lingkungan pendidikan, praktikum, dan laboratorium tingkat institusi.
+                                Didesain khusus untuk memenuhi tata kelola aset fisik di lingkungan sekolah, praktikum, dan bengkel SMK Taruna Bhakti.
                             </p>
                         </div>
                         
@@ -277,7 +277,7 @@ export default function Landing({
                 
                 {/* Footer */}
                 <footer className="border-t border-border/50 bg-background/50 py-8 backdrop-blur-sm text-center text-slate-500 dark:text-slate-400 text-sm">
-                    <p>© {new Date().getFullYear()} Hak Cipta Dilindungi. SispemLab Project.</p>
+                    <p>© {new Date().getFullYear()} Hak Cipta Dilindungi. SispemTB Project.</p>
                 </footer>
             </div>
         </>

@@ -1,6 +1,12 @@
-import { Wrench } from 'lucide-react';
-import type { SVGAttributes } from 'react';
+import type { ImgHTMLAttributes } from 'react';
 
-export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
-    return <Wrench {...(props as any)} />;
+export default function AppLogoIcon(props: ImgHTMLAttributes<HTMLImageElement>) {
+    return (
+        <img
+            src="/assets/image.png"
+            {...props}
+            alt="Logo"
+            className={`object-contain ${props.className || ''}`}
+        />
+    );
 }
