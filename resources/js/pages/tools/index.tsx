@@ -1,5 +1,5 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Download, FileSpreadsheet, Loader2, Package, Pencil, Plus, Send, Trash2, Upload, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
@@ -61,11 +61,14 @@ type Tool = {
     description: string | null;
     image: string | null;
     image_url: string | null;
+    price: number;
 };
 
 type Props = {
     tools: PaginatedData<Tool>;
     categories: CategoryOption[];
+    fineSettings?: { late_percent: number; damage_percent: number; loss_percent: number };
+    authUser?: { name: string; identifier: string; phone: string };
     stats: {
         total_tools: number;
         available_units: number;
@@ -83,14 +86,79 @@ const conditionOptions = [
     { value: 'rusak-berat', label: 'Rusak berat' },
 ];
 
-export default function ToolsIndex({ tools, categories, stats }: Props) {
+export default function ToolsIndex({ 
+    tools, 
+    categories, 
+    stats, 
+    fineSettings = { late_percent: 0, damage_percent: 0, loss_percent: 0 }, 
+    authUser 
+}: Props) {
     const { auth } = usePage<SharedData>().props;
-    const isPeminjam = auth.user.role === 'peminjam';
-    const toolsList = tools.data;
+    const user = authUser || (auth?.user ? {
+        name: auth.user.name,
+        identifier: auth.user.identifier || '',
+        phone: auth.user.phone || ''
+    } : { name: '', identifier: '', phone: '' });
+    
+    const isPeminjam = auth?.user?.role === 'peminjam';
+    const toolsList = tools?.data || [];
 
-    const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
-    const [detailTool, setDetailTool] = useState<Tool | null>(null);
+    const [isCreateOpen,  setIsCreateOpen]  = useState(false);
+    const [selectedTool,  setSelectedTool]  = useState<Tool | null>(null);
+    const [detailTool,    setDetailTool]    = useState<Tool | null>(null);
+    const [pinjamTool,    setPinjamTool]    = useState<Tool | null>(null);
+    const [isImportOpen,  setIsImportOpen]  = useState(false);
+    const [importFile,    setImportFile]    = useState<File | null>(null);
+    const [importing,     setImporting]     = useState(false);
+
+    const nowLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+    const loanForm = useForm({
+        borrower_name:       user.name || '',
+        borrower_identifier: user.identifier || '',
+        borrower_phone:      user.phone || '',
+        purpose:             '',
+        loan_date:           nowLocal(),
+        return_due_date:     new Date(Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000).toISOString().slice(0, 16),
+        notes:               '',
+        items:               [{ tool_id: '', quantity: 1, condition_out: 'baik' }],
+    });
+
+    const openLoanForm = (tool: Tool) => {
+        loanForm.reset();
+        loanForm.setData({
+            borrower_name:       user.name || '',
+            borrower_identifier: user.identifier || '',
+            borrower_phone:      user.phone || '',
+            purpose:             '',
+            loan_date:           nowLocal(),
+            return_due_date:     new Date(Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000).toISOString().slice(0, 16),
+            notes:               '',
+            items:               [{ tool_id: String(tool.id), quantity: 1, condition_out: 'baik' }],
+        });
+        setDetailTool(null);
+        setPinjamTool(tool);
+    };
+
+    const submitLoan = (e: FormEvent) => {
+        e.preventDefault();
+        loanForm.transform((data) => ({
+            ...data,
+            items: data.items.map((item) => ({ ...item, tool_id: Number(item.tool_id) })),
+        }));
+        loanForm.post('/loans', {
+            preserveScroll: true,
+            onSuccess: () => {
+                setPinjamTool(null);
+                loanForm.reset();
+                toast.success('Pengajuan peminjaman berhasil dikirim! Menunggu persetujuan.');
+            },
+            onError: (errs) => {
+                const msg = Object.values(errs)[0];
+                if (msg) toast.error(msg);
+            },
+        });
+    };
 
     const createForm = useForm({
         category_id: '',
@@ -103,6 +171,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
         stock_total: 1,
         stock_available: 1,
         description: '',
+        price: 0,
         image: null as File | null,
     });
 
@@ -117,6 +186,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
         stock_total: 1,
         stock_available: 1,
         description: '',
+        price: 0,
         image: null as File | null,
         _method: 'put',
     });
@@ -134,6 +204,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                 stock_total: selectedTool.stock_total ?? 1,
                 stock_available: selectedTool.stock_available ?? 1,
                 description: selectedTool.description ?? '',
+                price: selectedTool.price ?? 0,
                 image: null, // Reset file input
                 _method: 'put',
             });
@@ -160,6 +231,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                     'serial_number',
                     'location',
                     'description',
+                    'price',
                     'image'
                 );
                 setIsCreateOpen(false);
@@ -253,9 +325,17 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                     </p>
                                 )}
                                 <div className="mt-auto pt-4">
-                                    <Button asChild className="w-full" disabled={tool.stock_available < 1}>
-                                        <a href="/loans">Pinjam Alat Ini</a>
-                                    </Button>
+                                    {tool.stock_available < 1 ? (
+                                        <Button className="w-full" disabled>
+                                            Stok Habis
+                                        </Button>
+                                    ) : (
+                                        <Button asChild className="w-full">
+                                            <a href={`/loans?tool_id=${tool.id}`}>
+                                                Pinjam Alat Ini
+                                            </a>
+                                        </Button>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -279,29 +359,38 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                 />
 
                 {auth.user.role === 'admin' && (
-                    <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Tambah Alat
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
-                            <DialogHeader>
-                                <DialogTitle>Registrasi Alat Baru</DialogTitle>
-                                <DialogDescription>
-                                    Masukkan data inventaris baru ke sistem.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <ToolForm
-                                form={createForm}
-                                categories={categories}
-                                submitLabel="Simpan alat"
-                                onSubmit={submitCreate}
-                                onCancel={() => setIsCreateOpen(false)}
-                            />
-                        </DialogContent>
-                    </Dialog>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Tombol Import */}
+                        <Button variant="outline" className="gap-2" onClick={() => setIsImportOpen(true)}>
+                            <Upload className="h-4 w-4" />
+                            Import Excel
+                        </Button>
+
+                        {/* Tombol Tambah Manual */}
+                        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Tambah Alat
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
+                                <DialogHeader>
+                                    <DialogTitle>Registrasi Alat Baru</DialogTitle>
+                                    <DialogDescription>
+                                        Masukkan data inventaris baru ke sistem.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <ToolForm
+                                    form={createForm}
+                                    categories={categories}
+                                    submitLabel="Simpan alat"
+                                    onSubmit={submitCreate}
+                                    onCancel={() => setIsCreateOpen(false)}
+                                />
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 )}
             </div>
 
@@ -342,6 +431,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                 <TableHead>Kategori</TableHead>
                                 <TableHead>Kondisi</TableHead>
                                 <TableHead className="text-center">Stok</TableHead>
+                                <TableHead className="text-right">Harga</TableHead>
                                 {auth.user.role === 'admin' && (
                                     <TableHead className="text-right w-[150px]">Aksi</TableHead>
                                 )}
@@ -386,6 +476,9 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                     <TableCell className="text-center">
                                         {tool.stock_available}/{tool.stock_total}
                                     </TableCell>
+                                    <TableCell className="text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                                        {tool.price > 0 ? `Rp ${tool.price.toLocaleString('id-ID')}` : <span className="text-muted-foreground text-xs">Belum diset</span>}
+                                    </TableCell>
                                     {auth.user.role === 'admin' && (
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -414,7 +507,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                             ))}
                             {toolsList.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={auth.user.role === 'admin' ? 6 : 5} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={auth.user.role === 'admin' ? 7 : 6} className="h-24 text-center text-muted-foreground">
                                         Belum ada data alat yang diinputkan ke sistem.
                                     </TableCell>
                                 </TableRow>
@@ -532,7 +625,7 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
 
                                 <Separator />
 
-                                {/* Spesifikasi - 2 kolom */}
+                {/* Spesifikasi */}
                                 <div>
                                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Spesifikasi</p>
                                     <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -552,8 +645,42 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                             <span className="text-muted-foreground">Lokasi</span>
                                             <span className="font-semibold">{detailTool.location ?? '—'}</span>
                                         </div>
+                                        <div className="flex justify-between border-b border-border/40 pb-3">
+                                            <span className="text-muted-foreground">Harga</span>
+                                            <span className="font-semibold text-emerald-600">Rp {detailTool.price?.toLocaleString('id-ID') ?? '0'}</span>
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Info Denda untuk Peminjam */}
+                                {isPeminjam && detailTool.price > 0 && (
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4">
+                                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                            <AlertTriangle className="h-3.5 w-3.5" />
+                                            Estimasi Denda
+                                        </p>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-amber-700 dark:text-amber-400">Denda Keterlambatan ({fineSettings.late_percent}%/jam)</span>
+                                                <span className="font-semibold text-amber-800 dark:text-amber-300">
+                                                    Rp {Math.round(detailTool.price * fineSettings.late_percent / 100).toLocaleString('id-ID')}/jam
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-amber-700 dark:text-amber-400">Denda Kerusakan ({fineSettings.damage_percent}%)</span>
+                                                <span className="font-semibold text-amber-800 dark:text-amber-300">
+                                                    Rp {Math.round(detailTool.price * fineSettings.damage_percent / 100).toLocaleString('id-ID')}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-amber-700 dark:text-amber-400">Denda Kehilangan ({fineSettings.loss_percent}%)</span>
+                                                <span className="font-semibold text-amber-800 dark:text-amber-300">
+                                                    Rp {Math.round(detailTool.price * fineSettings.loss_percent / 100).toLocaleString('id-ID')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {detailTool.description && (
                                     <div>
@@ -563,9 +690,227 @@ export default function ToolsIndex({ tools, categories, stats }: Props) {
                                         </p>
                                     </div>
                                 )}
+
+                                {/* Tombol Pinjam untuk Peminjam */}
+                                {isPeminjam && detailTool.stock_available > 0 && (
+                                    <div className="pt-2">
+                                        <Button
+                                            className="w-full gap-2"
+                                            onClick={() => openLoanForm(detailTool)}
+                                        >
+                                            <Send className="h-4 w-4" />
+                                            Ajukan Peminjaman Alat Ini
+                                        </Button>
+                                    </div>
+                                )}
+                                {isPeminjam && detailTool.stock_available === 0 && (
+                                    <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-900/20 p-3 text-center text-sm text-rose-700 dark:text-rose-400">
+                                        Stok habis — tidak tersedia untuk dipinjam saat ini.
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Dialog Form Pengajuan Pinjam ── */}
+            <Dialog open={!!pinjamTool} onOpenChange={(open) => { if (!open) setPinjamTool(null); }}>
+                <DialogContent className="sm:max-w-2xl max-w-[95vw] max-h-[92vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Send className="h-5 w-5 text-primary" />
+                            Ajukan Peminjaman
+                        </DialogTitle>
+                        <DialogDescription>
+                            {pinjamTool ? `${pinjamTool.name} (${pinjamTool.code}) — Stok tersedia: ${pinjamTool.stock_available}` : ''}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form className="space-y-4 py-2" onSubmit={submitLoan}>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label>Nama Peminjam</Label>
+                                <Input value={loanForm.data.borrower_name} disabled readOnly />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Identitas (NIS/NIP)</Label>
+                                <Input value={loanForm.data.borrower_identifier} disabled readOnly />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label>No. Telepon</Label>
+                                <Input value={loanForm.data.borrower_phone} disabled readOnly />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Keperluan <span className="text-rose-500">*</span></Label>
+                                <Input
+                                    value={loanForm.data.purpose}
+                                    onChange={(e) => loanForm.setData('purpose', e.target.value)}
+                                    placeholder="Misal: Praktikum Jaringan..."
+                                    className={loanForm.errors.purpose ? 'border-rose-500' : ''}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label>Waktu Pinjam</Label>
+                                <Input type="datetime-local" value={loanForm.data.loan_date} onChange={(e) => loanForm.setData('loan_date', e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Batas Pengembalian</Label>
+                                <Input type="datetime-local" value={loanForm.data.return_due_date} onChange={(e) => loanForm.setData('return_due_date', e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* Item — alat sudah terisi otomatis */}
+                        <div className="space-y-3 pt-4 border-t">
+                            <div className="flex items-center justify-between">
+                                <Label>Alat yang Dipinjam</Label>
+                                <Button type="button" variant="outline" size="sm"
+                                    onClick={() => loanForm.setData('items', [...loanForm.data.items, { tool_id: '', quantity: 1, condition_out: 'baik' }])}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" /> Tambah Alat Lain
+                                </Button>
+                            </div>
+                            {loanForm.data.items.map((item, idx) => (
+                                <div key={idx} className="relative rounded-xl border border-border p-4 bg-muted/20">
+                                    {loanForm.data.items.length > 1 && (
+                                        <button type="button" className="absolute right-2 top-2 text-muted-foreground hover:text-rose-500"
+                                            onClick={() => loanForm.setData('items', loanForm.data.items.filter((_, i) => i !== idx))}
+                                        ><X className="h-4 w-4" /></button>
+                                    )}
+                                    <div className="grid gap-4 md:grid-cols-[1.6fr_0.7fr] mt-1">
+                                        <div className="grid gap-2">
+                                            <Label className="text-xs text-muted-foreground">Pilih Alat</Label>
+                                            <Select
+                                                value={item.tool_id}
+                                                onValueChange={(v) => loanForm.setData('items', loanForm.data.items.map((cur, i) => i === idx ? { ...cur, tool_id: v } : cur))}
+                                            >
+                                                <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Pilih alat..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {tools.data.map((t) => (
+                                                        <SelectItem key={t.id} value={String(t.id)}>
+                                                            {t.name} ({t.code}) — Stok: {t.stock_available}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label className="text-xs text-muted-foreground">Jumlah</Label>
+                                            <Input type="number" min={1} value={item.quantity} className="bg-background"
+                                                onChange={(e) => loanForm.setData('items', loanForm.data.items.map((cur, i) => i === idx ? { ...cur, quantity: Number(e.target.value) } : cur))}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Catatan (opsional)</Label>
+                            <textarea className={textareaClass} rows={2} value={loanForm.data.notes} onChange={(e) => loanForm.setData('notes', e.target.value)} />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button type="button" variant="outline" onClick={() => setPinjamTool(null)}>Batal</Button>
+                            <Button type="submit" disabled={loanForm.processing} className="gap-2">
+                                {loanForm.processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                {loanForm.processing ? 'Mengirim...' : 'Kirim Pengajuan'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ===== Dialog Import Excel ===== */}
+            <Dialog open={isImportOpen} onOpenChange={(open) => { setIsImportOpen(open); if (!open) setImportFile(null); }}>
+                <DialogContent className="sm:max-w-md max-w-[95vw]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+                            Import Data Alat dari Excel
+                        </DialogTitle>
+                        <DialogDescription>
+                            Upload file .xlsx/.xls berisi data alat. Alat dengan kode yang sama akan diperbarui otomatis.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        {/* Download Template */}
+                        <div className="rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-500/10 dark:border-sky-500/30 p-3 flex items-start gap-3">
+                            <Download className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-sky-800 dark:text-sky-300">Belum punya template?</p>
+                                <p className="text-xs text-sky-700 dark:text-sky-400 mt-0.5 mb-2">Download template Excel berikut agar format kolom sesuai.</p>
+                                <a
+                                    href="/tools/import/template"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300 underline underline-offset-2 hover:text-sky-900"
+                                    target="_blank"
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Download Template
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Upload File */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="import-file">Pilih File Excel</Label>
+                            <Input
+                                id="import-file"
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                                className="cursor-pointer"
+                            />
+                            <p className="text-xs text-muted-foreground">Format: .xlsx, .xls, .csv — Maks 5 MB</p>
+                        </div>
+
+                        {importFile && (
+                            <div className="rounded-lg bg-muted/40 border px-3 py-2 text-sm flex items-center gap-2">
+                                <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
+                                <span className="truncate font-medium">{importFile.name}</span>
+                                <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+                                    {(importFile.size / 1024).toFixed(1)} KB
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => { setIsImportOpen(false); setImportFile(null); }} disabled={importing}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            disabled={!importFile || importing}
+                            onClick={() => {
+                                if (!importFile) return;
+                                setImporting(true);
+                                const fd = new FormData();
+                                fd.append('file', importFile);
+                                router.post('/tools/import', fd, {
+                                    forceFormData: true,
+                                    preserveScroll: true,
+                                    onSuccess: () => {
+                                        setIsImportOpen(false);
+                                        setImportFile(null);
+                                        toast.success('Import berhasil!');
+                                    },
+                                    onError: (errs) => toast.error(Object.values(errs)[0] as string ?? 'Import gagal.'),
+                                    onFinish: () => setImporting(false),
+                                });
+                            }}
+                        >
+                            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {importing ? 'Mengimport...' : 'Import Sekarang'}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
@@ -590,6 +935,7 @@ function ToolForm({
         stock_total: number;
         stock_available: number;
         description: string;
+        price: number;
         image: File | null;
     }>>;
     categories: CategoryOption[];
@@ -722,6 +1068,19 @@ function ToolForm({
                         }
                     />
                 </div>
+            </div>
+
+            <div className="grid gap-2">
+                <Label>Harga Alat (Rp)</Label>
+                <Input
+                    type="number"
+                    min={0}
+                    value={form.data.price}
+                    className={form.errors.price ? 'border-red-500' : ''}
+                    onChange={(event) =>
+                        form.setData('price', Number(event.target.value))
+                    }
+                />
             </div>
 
             <div className="grid gap-2">

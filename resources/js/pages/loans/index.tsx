@@ -1,6 +1,6 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { AlertTriangle, CircleDollarSign, ClipboardList, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { AlertTriangle, Banknote, CircleDollarSign, ClipboardList, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import TablePagination, { type PaginatedData } from '@/components/table-pagination';
@@ -54,6 +54,10 @@ type Loan = {
     status: string;
     notes: string | null;
     requested_by: string | null;
+    fine: number | null;
+    damage_fine: number | null;
+    total_fine: number | null;
+    payment_status: 'paid' | 'unpaid' | null;
     items: Array<{
         tool_id: number;
         tool_name: string | null;
@@ -71,11 +75,14 @@ type ToolOption = {
     category_name: string | null;
     stock_available: number;
     condition_status: string;
+    price: number;
 };
 
 type Props = {
     loans: PaginatedData<Loan>;
     tools: ToolOption[];
+    fineSettings?: { late_percent: number; damage_percent: number; lost_percent: number };
+    hasUnpaidFine?: boolean;
     stats: {
         pending: number;
         active: number;
@@ -94,17 +101,50 @@ const statusClasses: Record<string, string> = {
     rejected: 'bg-rose-100 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300',
 };
 
-export default function LoansIndex({ loans, tools, stats }: Props) {
+export default function LoansIndex({ loans, tools, stats, fineSettings = { late_percent: 1, damage_percent: 50, lost_percent: 100 }, hasUnpaidFine = false }: Props) {
     const { auth } = usePage<SharedData>().props;
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
     const [returnLoan, setReturnLoan] = useState<Loan | null>(null);
     const [returning, setReturning] = useState(false);
+
+    const nowLocal = () =>
+        new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
     const [returnForm, setReturnForm] = useState({
-        return_datetime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-        condition_note: '',
-        damage_fine: '',
+        return_datetime:  nowLocal(),
+        condition_status: 'baik',
+        hours_late:       0,
+        condition_note:   '',
     });
+
+    // Hitung preview denda live
+    const loanTotalPrice = (returnLoan?.items ?? []).reduce((sum, item) => {
+        const tool = tools.find((t) => t.id === item.tool_id);
+        return sum + (tool?.price ?? 0) * item.quantity;
+    }, 0);
+
+    const previewLateFine   = Math.round(loanTotalPrice * (fineSettings.late_percent   / 100) * returnForm.hours_late);
+    const previewDamageFine = returnForm.condition_status === 'rusak'  ? Math.round(loanTotalPrice * (fineSettings.damage_percent / 100)) : 0;
+    const previewLostFine   = returnForm.condition_status === 'hilang' ? Math.round(loanTotalPrice * (fineSettings.lost_percent   / 100)) : 0;
+    const previewTotal      = previewLateFine + previewDamageFine + previewLostFine;
+
+    const openReturnDialog = (loan: Loan) => {
+        const dt = nowLocal();
+        // Hitung jam telat otomatis jika due_date sudah lewat
+        let hoursLate = 0;
+        if (loan.return_due_date) {
+            const due = new Date(loan.return_due_date.replace(' ', 'T'));
+            const now = new Date();
+            if (now > due) {
+                hoursLate = Math.ceil((now.getTime() - due.getTime()) / 3600000);
+            }
+        }
+        setReturnForm({ return_datetime: dt, condition_status: 'baik', hours_late: hoursLate, condition_note: '' });
+        setReturnLoan(loan);
+    };
+
+
     const loansList = loans.data;
     
     const form = useForm({
@@ -117,6 +157,19 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
         notes: '',
         items: [{ tool_id: '', quantity: 1, condition_out: 'baik' }],
     });
+
+    // Baca ?tool_id dari URL → pre-fill form dan buka dialog otomatis
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const toolId = params.get('tool_id');
+        if (toolId && auth.user.role === 'peminjam' && !hasUnpaidFine) {
+            form.setData('items', [{ tool_id: toolId, quantity: 1, condition_out: 'baik' }]);
+            setIsCreateOpen(true);
+            // Bersihkan query string agar tidak re-trigger saat navigasi
+            window.history.replaceState({}, '', '/loans');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const submit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -180,10 +233,17 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
 
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogTrigger asChild>
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Buat Pengajuan
-                        </Button>
+                        {hasUnpaidFine && auth.user.role === 'peminjam' ? (
+                            <Button disabled className="gap-2 opacity-60 cursor-not-allowed">
+                                <Banknote className="h-4 w-4" />
+                                Denda Belum Lunas
+                            </Button>
+                        ) : (
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Buat Pengajuan
+                            </Button>
+                        )}
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-4xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
                         <DialogHeader>
@@ -420,6 +480,20 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                 </Card>
             </div>
 
+            {/* Banner peringatan denda belum lunas untuk peminjam */}
+            {auth.user.role === 'peminjam' && loansList.some(l => l.payment_status === 'unpaid' && (l.total_fine ?? 0) > 0) && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/30 p-4 flex items-start gap-3">
+                    <Banknote className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-semibold text-rose-800 dark:text-rose-300">Anda Memiliki Denda yang Belum Dibayar</p>
+                        <p className="text-xs text-rose-700 dark:text-rose-400 mt-1">
+                            Silakan bayar denda secara <strong>tunai (cash)</strong> langsung kepada Admin atau Petugas.
+                            Setelah pembayaran diterima, petugas akan mengkonfirmasi pelunasan di sistem.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <Card className="overflow-hidden border-border/60 bg-card/50 backdrop-blur-xl shadow-md">
                 <div className="overflow-x-auto pb-4">
                     <Table className="min-w-[1000px]">
@@ -521,7 +595,7 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                                             size="sm"
                                                             variant="outline"
                                                             className="h-8 shadow-none border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10"
-                                                            onClick={(e) => { e.stopPropagation(); setReturnLoan(loan); setReturnForm({ return_datetime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16), condition_note: '', damage_fine: '' }); }}
+                                                            onClick={(e) => { e.stopPropagation(); openReturnDialog(loan); }}
                                                         >
                                                             <RotateCcw className="mr-1 h-3 w-3" />
                                                             Proses Kembali
@@ -529,7 +603,7 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                                     )}
                                                 </>
                                             )}
-                                            {auth.user.role === 'peminjam' && loan.status === 'borrowed' && (
+                                             {auth.user.role === 'peminjam' && loan.status === 'borrowed' && (
                                                 <Button
                                                     type="button"
                                                     size="sm"
@@ -539,6 +613,32 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                                     <RotateCcw className="mr-1 h-3 w-3" />
                                                     Kembalikan Alat
                                                 </Button>
+                                            )}
+                                            {/* Badge denda untuk peminjam pada status returned */}
+                                            {auth.user.role === 'peminjam' && loan.status === 'returned' && loan.total_fine !== null && (
+                                                <div className="text-right">
+                                                    {loan.total_fine > 0 ? (
+                                                        <div className={`inline-flex flex-col items-end gap-0.5`}>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`text-xs font-semibold border-transparent ${
+                                                                    loan.payment_status === 'paid'
+                                                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                                                        : 'bg-rose-100 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300'
+                                                                }`}
+                                                            >
+                                                                {loan.payment_status === 'paid' ? '✓ Lunas' : '⚠ Belum Lunas'}
+                                                            </Badge>
+                                                            <span className="text-xs font-mono text-muted-foreground">
+                                                                Rp {loan.total_fine.toLocaleString('id-ID')}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300 border-transparent">
+                                                            ✓ Tidak Ada Denda
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </TableCell>
@@ -721,7 +821,7 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
-                        {/* Waktu Pengembalian - pakai datetime-local */}
+                        {/* Waktu Pengembalian */}
                         <div className="grid gap-2">
                             <Label htmlFor="return_datetime">Waktu Pengembalian</Label>
                             <Input
@@ -740,54 +840,106 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                             : 'bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400'
                                     }`}>
                                         <span>{isLate ? '⚠' : '✓'}</span>
-                                        <span>
-                                            Batas kembali: <strong>{due.replace('T', ' ')}</strong>
-                                            {isLate && ' — Terlambat! Denda akan dihitung (Rp 5.000/hari, dibulatkan ke atas).'}
-                                            {!isLate && ' — Tepat waktu, tidak ada denda keterlambatan.'}
+                                        <span>Batas kembali: <strong>{due.replace('T', ' ')}</strong>
+                                            {isLate && ' — Terlambat!'}
+                                            {!isLate && ' — Tepat waktu.'}
                                         </span>
                                     </div>
                                 );
                             })()}
                         </div>
 
-                        {/* Denda Kerusakan */}
+                        {/* Jam Keterlambatan */}
                         <div className="grid gap-2">
-                            <Label htmlFor="damage_fine" className="flex items-center gap-1.5">
-                                <CircleDollarSign className="h-4 w-4 text-orange-500" />
-                                Denda Kerusakan / Kehilangan (Rp)
-                                <span className="text-muted-foreground font-normal text-xs">(opsional)</span>
-                            </Label>
-                            <Input
-                                id="damage_fine"
-                                type="number"
-                                min="0"
-                                step="1000"
-                                placeholder="0"
-                                value={returnForm.damage_fine}
-                                onChange={(e) => setReturnForm(f => ({ ...f, damage_fine: e.target.value }))}
-                            />
-                            <p className="text-xs text-muted-foreground">Isi jika ada kerusakan atau kehilangan alat. Denda keterlambatan dihitung otomatis.</p>
+                            <Label htmlFor="hours_late">Jam Keterlambatan</Label>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    id="hours_late"
+                                    type="number"
+                                    min="0"
+                                    className="max-w-[120px]"
+                                    value={returnForm.hours_late}
+                                    onChange={(e) => setReturnForm(f => ({ ...f, hours_late: Number(e.target.value) }))}
+                                />
+                                <span className="text-sm text-muted-foreground">jam (0 = tidak telat)</span>
+                            </div>
+                            {returnForm.hours_late > 0 && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                    Denda telat: <strong>Rp {previewLateFine.toLocaleString('id-ID')}</strong>
+                                    &nbsp;({fineSettings.late_percent}% × {returnForm.hours_late} jam × total harga alat)
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Kondisi Alat Dikembalikan */}
+                        <div className="grid gap-2">
+                            <Label>Kondisi Alat</Label>
+                            <Select
+                                value={returnForm.condition_status}
+                                onValueChange={(v) => setReturnForm(f => ({ ...f, condition_status: v }))}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="baik">✅ Baik — tidak ada denda tambahan</SelectItem>
+                                    <SelectItem value="rusak">🔧 Rusak — denda {fineSettings.damage_percent}% dari harga alat</SelectItem>
+                                    <SelectItem value="hilang">❌ Hilang — denda {fineSettings.lost_percent}% dari harga alat</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {returnForm.condition_status !== 'baik' && (
+                                <p className="text-xs text-orange-600 dark:text-orange-400">
+                                    Denda {returnForm.condition_status}: <strong>Rp {(previewDamageFine + previewLostFine).toLocaleString('id-ID')}</strong>
+                                </p>
+                            )}
                         </div>
 
                         {/* Catatan Kondisi */}
                         <div className="grid gap-2">
-                            <Label htmlFor="condition_note">Catatan Kondisi Alat</Label>
+                            <Label htmlFor="condition_note">Catatan Kondisi <span className="text-muted-foreground font-normal text-xs">(opsional)</span></Label>
                             <textarea
                                 id="condition_note"
                                 className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
-                                placeholder="Contoh: Alat dikembalikan dalam kondisi baik. Kabel ada lecet kecil."
+                                placeholder="Catatan kondisi alat saat dikembalikan..."
                                 value={returnForm.condition_note}
                                 onChange={(e) => setReturnForm(f => ({ ...f, condition_note: e.target.value }))}
                             />
                         </div>
 
-                        {/* Summary denda kerusakan */}
-                        {(returnForm.damage_fine && Number(returnForm.damage_fine) > 0) && (
-                            <div className="rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-500/10 dark:border-orange-500/30 p-3 flex items-start gap-2">
-                                <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
-                                <p className="text-sm text-orange-700 dark:text-orange-400">
-                                    Denda kerusakan <span className="font-bold">Rp {Number(returnForm.damage_fine).toLocaleString('id-ID')}</span> akan ditambahkan ke total denda.
+                        {/* Ringkasan Denda */}
+                        {previewTotal > 0 && (
+                            <div className="rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-500/10 dark:border-orange-500/30 p-4 space-y-2">
+                                <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-1.5">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    Ringkasan Denda
                                 </p>
+                                {previewLateFine > 0 && (
+                                    <div className="flex justify-between text-sm text-orange-700 dark:text-orange-400">
+                                        <span>Keterlambatan ({returnForm.hours_late} jam)</span>
+                                        <span className="font-semibold">Rp {previewLateFine.toLocaleString('id-ID')}</span>
+                                    </div>
+                                )}
+                                {previewDamageFine > 0 && (
+                                    <div className="flex justify-between text-sm text-orange-700 dark:text-orange-400">
+                                        <span>Kerusakan ({fineSettings.damage_percent}%)</span>
+                                        <span className="font-semibold">Rp {previewDamageFine.toLocaleString('id-ID')}</span>
+                                    </div>
+                                )}
+                                {previewLostFine > 0 && (
+                                    <div className="flex justify-between text-sm text-orange-700 dark:text-orange-400">
+                                        <span>Kehilangan ({fineSettings.lost_percent}%)</span>
+                                        <span className="font-semibold">Rp {previewLostFine.toLocaleString('id-ID')}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between text-sm font-bold text-orange-900 dark:text-orange-200 border-t border-orange-200 dark:border-orange-500/30 pt-2 mt-1">
+                                    <span>Total Denda</span>
+                                    <span>Rp {previewTotal.toLocaleString('id-ID')}</span>
+                                </div>
+                            </div>
+                        )}
+                        {previewTotal === 0 && (
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 p-3 text-center text-sm text-emerald-700 dark:text-emerald-400">
+                                ✅ Tidak ada denda untuk pengembalian ini.
                             </div>
                         )}
                     </div>
@@ -801,10 +953,11 @@ export default function LoansIndex({ loans, tools, stats }: Props) {
                                 if (!returnLoan) return;
                                 setReturning(true);
                                 router.post('/returns/process', {
-                                    loan_id: returnLoan.id,
-                                    return_datetime: returnForm.return_datetime.replace('T', ' ') + ':00',
-                                    condition_note: returnForm.condition_note,
-                                    damage_fine: returnForm.damage_fine || 0,
+                                    loan_id:          returnLoan.id,
+                                    return_datetime:  returnForm.return_datetime.replace('T', ' ') + ':00',
+                                    condition_status: returnForm.condition_status,
+                                    hours_late:       returnForm.hours_late,
+                                    condition_note:   returnForm.condition_note,
                                 }, {
                                     preserveScroll: true,
                                     onSuccess: () => { setReturnLoan(null); toast.success('Pengembalian berhasil diproses!'); },

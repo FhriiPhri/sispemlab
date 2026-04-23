@@ -8,9 +8,13 @@ type Props = {
     type: string;
     loans: any[];
     returns: any[];
+    users?: any[];
+    categories?: any[];
+    toolsData?: any[];
+    activityLogs?: any[];
 };
 
-export default function ReportsPrint({ start_date, end_date, type, loans, returns }: Props) {
+export default function ReportsPrint({ start_date, end_date, type, loans, returns, users, categories, toolsData, activityLogs }: Props) {
     const { auth } = usePage<any>().props;
 
     useEffect(() => {
@@ -94,6 +98,137 @@ export default function ReportsPrint({ start_date, end_date, type, loans, return
         );
     };
 
+    const renderUserTable = () => {
+        if (!users || users.length === 0) return <p className="text-gray-500 italic my-4">Tidak ada data user.</p>;
+
+        return (
+            <div className="mb-8">
+                <h3 className="text-lg font-bold mb-2 uppercase border-b-2 border-black pb-1">Data User</h3>
+                <table className="w-full text-sm border-collapse border border-gray-800">
+                    <thead>
+                        <tr className="bg-gray-100 print:bg-gray-100">
+                            <th className="border border-gray-800 px-3 py-2 text-left">No</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Nama Lengkap</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Email</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Peran</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Identitas (NIS/NIP)</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">No. HP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map((u, index) => (
+                            <tr key={u.id}>
+                                <td className="border border-gray-800 px-3 py-2 text-center">{index + 1}</td>
+                                <td className="border border-gray-800 px-3 py-2">{u.name}</td>
+                                <td className="border border-gray-800 px-3 py-2">{u.email}</td>
+                                <td className="border border-gray-800 px-3 py-2 capitalize">{u.role}</td>
+                                <td className="border border-gray-800 px-3 py-2">{u.identifier || '-'}</td>
+                                <td className="border border-gray-800 px-3 py-2">{u.phone || '-'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderCategoryTable = () => {
+        if (!categories || categories.length === 0) return <p className="text-gray-500 italic my-4">Tidak ada data kategori.</p>;
+
+        return (
+            <div className="mb-8">
+                <h3 className="text-lg font-bold mb-2 uppercase border-b-2 border-black pb-1">Data Kategori</h3>
+                <table className="w-full text-sm border-collapse border border-gray-800">
+                    <thead>
+                        <tr className="bg-gray-100 print:bg-gray-100">
+                            <th className="border border-gray-800 px-3 py-2 text-left">No</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Nama Kategori</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Deskripsi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {categories.map((c, index) => (
+                            <tr key={c.id}>
+                                <td className="border border-gray-800 px-3 py-2 text-center">{index + 1}</td>
+                                <td className="border border-gray-800 px-3 py-2">{c.name}</td>
+                                <td className="border border-gray-800 px-3 py-2">{c.description || '-'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderToolTable = () => {
+        if (!toolsData || toolsData.length === 0) return <p className="text-gray-500 italic my-4">Tidak ada data alat.</p>;
+
+        return (
+            <div className="mb-8">
+                <h3 className="text-lg font-bold mb-2 uppercase border-b-2 border-black pb-1">Data Alat</h3>
+                <table className="w-full text-sm border-collapse border border-gray-800">
+                    <thead>
+                        <tr className="bg-gray-100 print:bg-gray-100">
+                            <th className="border border-gray-800 px-3 py-2 text-left">No</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Kode</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Nama Alat</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Kategori</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Merk</th>
+                            <th className="border border-gray-800 px-3 py-2 text-center">Stok</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {toolsData.map((t, index) => (
+                            <tr key={t.id}>
+                                <td className="border border-gray-800 px-3 py-2 text-center">{index + 1}</td>
+                                <td className="border border-gray-800 px-3 py-2">{t.code}</td>
+                                <td className="border border-gray-800 px-3 py-2">{t.name}</td>
+                                <td className="border border-gray-800 px-3 py-2">{t.category?.name || '-'}</td>
+                                <td className="border border-gray-800 px-3 py-2">{t.brand || '-'}</td>
+                                <td className="border border-gray-800 px-3 py-2 text-center">{t.stock_available} / {t.stock_total}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderLogTable = () => {
+        const logs = activityLogs ?? [];
+        if (logs.length === 0) return <p className="text-gray-500 italic my-4">Tidak ada data log aktivitas.</p>;
+
+        return (
+            <div className="mb-8">
+                <h3 className="text-lg font-bold mb-2 uppercase border-b-2 border-black pb-1">Log Aktivitas</h3>
+                <table className="w-full text-sm border-collapse border border-gray-800">
+                    <thead>
+                        <tr className="bg-gray-100 print:bg-gray-100">
+                            <th className="border border-gray-800 px-3 py-2 text-left">No</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Waktu</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Pengguna</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Peran</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Aksi</th>
+                            <th className="border border-gray-800 px-3 py-2 text-left">Deskripsi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {logs.map((log: any, index: number) => (
+                            <tr key={log.id} className={index % 2 === 0 ? '' : 'bg-gray-50'}>
+                                <td className="border border-gray-800 px-3 py-2 text-center">{index + 1}</td>
+                                <td className="border border-gray-800 px-3 py-2 text-xs whitespace-nowrap">{log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '-'}</td>
+                                <td className="border border-gray-800 px-3 py-2">{log.user?.name ?? 'Sistem'}</td>
+                                <td className="border border-gray-800 px-3 py-2 capitalize">{log.user?.role ?? '-'}</td>
+                                <td className="border border-gray-800 px-3 py-2 font-mono text-xs">{log.action}</td>
+                                <td className="border border-gray-800 px-3 py-2">{log.description}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
     return (
         <div className="bg-white text-black min-h-screen">
             <Head title="Cetak Laporan - SispemTB" />
@@ -110,18 +245,28 @@ export default function ReportsPrint({ start_date, end_date, type, loans, return
                 {/* Judul Laporan */}
                 <div className="text-center mb-8">
                     <h2 className="text-xl font-bold underline uppercase">
-                        Laporan Registrasi 
-                        {type === 'peminjaman' && " Peminjaman"}
-                        {type === 'pengembalian' && " Pengembalian"}
+                        {type === 'semua' && 'Laporan Semua Data'}
+                        {type === 'peminjaman' && 'Laporan Data Peminjaman'}
+                        {type === 'pengembalian' && 'Laporan Data Pengembalian'}
+                        {type === 'user' && 'Laporan Data User'}
+                        {type === 'kategori' && 'Laporan Data Kategori'}
+                        {type === 'alat' && 'Laporan Data Alat'}
+                        {type === 'log' && 'Laporan Log Aktivitas'}
                     </h2>
-                    <p className="mt-2 text-sm">
-                        Periode: {new Date(start_date).toLocaleDateString('id-ID')} s/d {new Date(end_date).toLocaleDateString('id-ID')}
-                    </p>
+                    {(type === 'peminjaman' || type === 'pengembalian' || type === 'semua') && (
+                        <p className="mt-2 text-sm">
+                            Periode: {new Date(start_date).toLocaleDateString('id-ID')} s/d {new Date(end_date).toLocaleDateString('id-ID')}
+                        </p>
+                    )}
                 </div>
 
                 {/* Konten Tabel */}
                 {(type === 'peminjaman' || type === 'semua') && renderLoanTable()}
                 {(type === 'pengembalian' || type === 'semua') && renderReturnTable()}
+                {(type === 'user' || type === 'semua') && renderUserTable()}
+                {(type === 'kategori' || type === 'semua') && renderCategoryTable()}
+                {(type === 'alat' || type === 'semua') && renderToolTable()}
+                {(type === 'log' || type === 'semua') && renderLogTable()}
 
                 {/* Tanda Tangan */}
                 <div className="mt-16 flex justify-end">

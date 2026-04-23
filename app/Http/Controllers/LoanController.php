@@ -6,6 +6,7 @@ use App\Http\Requests\StoreLoanRequest;
 use App\Http\Requests\UpdateLoanStatusRequest;
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Setting;
 use App\Models\Tool;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -31,34 +32,40 @@ class LoanController extends Controller
     public function index(): Response
     {
         $loans = Loan::query()
-            ->with(['items.tool:id,name,code', 'user:id,name'])
+            ->with(['items.tool:id,name,code', 'user:id,name', 'toolReturn:id,loan_id,fine,damage_fine,payment_status'])
             ->when(auth()->user()->role === 'peminjam', function ($query) {
                 $query->where('user_id', auth()->id());
             })
             ->latest()
             ->paginate(10)
             ->through(fn (Loan $loan): array => [
-                'id' => $loan->id,
-                'loan_code' => $loan->loan_code,
-                'borrower_name' => $loan->borrower_name,
+                'id'                  => $loan->id,
+                'loan_code'           => $loan->loan_code,
+                'borrower_name'       => $loan->borrower_name,
                 'borrower_identifier' => $loan->borrower_identifier,
-                'borrower_phone' => $loan->borrower_phone,
-                'purpose' => $loan->purpose,
-                'loan_date' => optional($loan->loan_date)?->format('Y-m-d H:i'),
-                'return_due_date' => optional($loan->return_due_date)?->format('Y-m-d H:i'),
-                'returned_at' => optional($loan->returned_at)?->format('Y-m-d H:i'),
-                'status' => $loan->status,
-                'notes' => $loan->notes,
-                'requested_by' => $loan->user?->name,
-                'items' => $loan->items->map(fn (LoanItem $item): array => [
-                    'tool_id' => $item->tool_id,
-                    'tool_name' => $item->tool?->name,
-                    'tool_code' => $item->tool?->code,
-                    'quantity' => $item->quantity,
+                'borrower_phone'      => $loan->borrower_phone,
+                'purpose'             => $loan->purpose,
+                'loan_date'           => optional($loan->loan_date)?->format('Y-m-d H:i'),
+                'return_due_date'     => optional($loan->return_due_date)?->format('Y-m-d H:i'),
+                'returned_at'         => optional($loan->returned_at)?->format('Y-m-d H:i'),
+                'status'              => $loan->status,
+                'notes'               => $loan->notes,
+                'requested_by'        => $loan->user?->name,
+                // Data denda dari record pengembalian
+                'fine'                => $loan->toolReturn ? (int) $loan->toolReturn->fine : null,
+                'damage_fine'         => $loan->toolReturn ? (int) $loan->toolReturn->damage_fine : null,
+                'total_fine'          => $loan->toolReturn ? (int) $loan->toolReturn->fine + (int) $loan->toolReturn->damage_fine : null,
+                'payment_status'      => $loan->toolReturn?->payment_status,
+                'items'               => $loan->items->map(fn (LoanItem $item): array => [
+                    'tool_id'       => $item->tool_id,
+                    'tool_name'     => $item->tool?->name,
+                    'tool_code'     => $item->tool?->code,
+                    'quantity'      => $item->quantity,
                     'condition_out' => $item->condition_out,
-                    'condition_in' => $item->condition_in,
+                    'condition_in'  => $item->condition_in,
                 ])->all(),
             ]);
+
 
         $allLoans = Loan::query()
             ->when(auth()->user()->role === 'peminjam', function ($query) {
@@ -73,22 +80,41 @@ class LoanController extends Controller
             ->orderBy('name')
             ->get()
             ->map(fn (Tool $tool): array => [
-                'id' => $tool->id,
-                'label' => $tool->name,
-                'code' => $tool->code,
-                'category_name' => $tool->category?->name,
+                'id'              => $tool->id,
+                'label'           => $tool->name,
+                'code'            => $tool->code,
+                'category_name'   => $tool->category?->name,
                 'stock_available' => $tool->stock_available,
                 'condition_status' => $tool->condition_status,
+                'price'           => (float) $tool->price,
             ]);
 
+        $settings = Setting::all()->mapWithKeys(fn ($s) => [$s->key => $s->value])->all();
+
+        $hasUnpaidFine = false;
+        if (auth()->user()->role === 'peminjam') {
+            $hasUnpaidFine = auth()->user()->loans()
+                ->whereHas('toolReturn', function ($q) {
+                    $q->where('payment_status', 'unpaid')
+                      ->whereRaw('(fine + damage_fine) > 0');
+                })
+                ->exists();
+        }
+
         return Inertia::render('loans/index', [
-            'loans' => $loans,
-            'tools' => $tools,
-            'stats' => [
-                'pending' => (int) ($allLoans['pending'] ?? 0),
-                'active' => (int) ($allLoans['approved'] ?? 0) + (int) ($allLoans['borrowed'] ?? 0),
+            'loans'        => $loans,
+            'tools'        => $tools,
+            'stats'        => [
+                'pending'  => (int) ($allLoans['pending'] ?? 0),
+                'active'   => (int) ($allLoans['approved'] ?? 0) + (int) ($allLoans['borrowed'] ?? 0),
                 'returned' => (int) ($allLoans['returned'] ?? 0),
             ],
+            'fineSettings' => [
+                'late_percent'   => (float) ($settings['fine_late_percentage_per_hour'] ?? 1),
+                'damage_percent' => (float) ($settings['fine_damage_percentage']         ?? 50),
+                'lost_percent'   => (float) ($settings['fine_lost_percentage']           ?? 100),
+            ],
+            'hasUnpaidFine' => $hasUnpaidFine,
         ]);
     }
 
@@ -106,6 +132,22 @@ class LoanController extends Controller
             throw ValidationException::withMessages([
                 'borrower_name' => ['Anda masih memiliki transaksi peminjaman aktif atau belum dikembalikan. Harap tuntaskan sebelum meminjam lagi.']
             ]);
+        }
+
+        // Block jika ada denda yang belum dilunasi
+        if ($request->user()) {
+            $hasUnpaidFine = $request->user()->loans()
+                ->whereHas('toolReturn', function ($q) {
+                    $q->where('payment_status', 'unpaid')
+                      ->whereRaw('(fine + damage_fine) > 0');
+                })
+                ->exists();
+
+            if ($hasUnpaidFine) {
+                throw ValidationException::withMessages([
+                    'borrower_name' => ['Anda masih memiliki denda yang belum dilunasi. Harap lunasi denda terlebih dahulu sebelum membuat pengajuan baru.']
+                ]);
+            }
         }
 
         $validated = $request->validated();

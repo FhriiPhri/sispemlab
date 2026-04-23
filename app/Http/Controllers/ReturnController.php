@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Loan;
+use App\Models\Setting;
 use App\Models\ToolReturn;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
@@ -74,25 +75,61 @@ class ReturnController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'loan_id'        => 'required|exists:loans,id',
-            'return_datetime' => 'required|date',
-            'condition_note' => 'nullable|string|max:1000',
-            'damage_fine'    => 'nullable|integer|min:0',
+            'loan_id'          => 'required|exists:loans,id',
+            'return_datetime'  => 'required|date',
+            'condition_status' => 'required|in:baik,rusak,hilang',
+            'hours_late'       => 'nullable|integer|min:0',
+            'condition_note'   => 'nullable|string|max:1000',
         ]);
 
-        $loan = Loan::findOrFail($request->loan_id);
+        $loan = Loan::with('items.tool')->findOrFail($request->loan_id);
 
         if ($loan->status === 'returned') {
             return back()->with('error', 'Peminjaman ini sudah dikembalikan.');
         }
 
+        // ── Hitung denda keterlambatan ─────────────────────────────────────
+        $late_fine   = 0;
+        $return_dt   = \Carbon\Carbon::parse($request->return_datetime);
+        $due_dt      = \Carbon\Carbon::parse($loan->return_due_date);
+        $hours_late  = (int) ($request->hours_late ?? 0);
+
+        // Gunakan jam yang di-input petugas, atau hitung otomatis jika telat
+        if ($hours_late <= 0 && $return_dt->gt($due_dt)) {
+            $hours_late = (int) ceil($return_dt->diffInSeconds($due_dt) / 3600);
+        }
+
+        if ($hours_late > 0) {
+            $latePercent = (float) Setting::getValue('fine_late_percentage_per_hour', 1) / 100;
+            foreach ($loan->items as $item) {
+                $late_fine += ($item->tool->price ?? 0) * $latePercent * $hours_late * $item->quantity;
+            }
+        }
+
+        // ── Hitung denda kerusakan / kehilangan ───────────────────────────
+        $damage_fine = 0;
+        $condStatus  = $request->condition_status;
+
+        if ($condStatus === 'rusak') {
+            $damagePercent = (float) Setting::getValue('fine_damage_percentage', 50) / 100;
+            foreach ($loan->items as $item) {
+                $damage_fine += ($item->tool->price ?? 0) * $damagePercent * $item->quantity;
+            }
+        } elseif ($condStatus === 'hilang') {
+            $lostPercent = (float) Setting::getValue('fine_lost_percentage', 100) / 100;
+            foreach ($loan->items as $item) {
+                $damage_fine += ($item->tool->price ?? 0) * $lostPercent * $item->quantity;
+            }
+        }
+
         try {
-            DB::statement('CALL process_return(?, ?, ?, ?, ?)', [
+            DB::statement('CALL process_return(?, ?, ?, ?, ?, ?)', [
                 $loan->id,
                 auth()->id(),
-                $request->return_datetime,    // DATETIME: '2026-04-15 14:30:00'
+                $request->return_datetime,
                 $request->condition_note ?? '',
-                (int) ($request->damage_fine ?? 0),
+                (int) round($damage_fine),
+                (int) round($late_fine),
             ]);
 
             return back()->with('success', 'Pengembalian berhasil diproses. Denda otomatis dihitung.');

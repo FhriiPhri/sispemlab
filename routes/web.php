@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\ToolController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('logs', function() {
             return inertia('logs/index', ['logs' => \App\Models\ActivityLog::with('user')->latest()->paginate(20)]);
         })->name('logs.index');
+
+        // Import Data Alat
+        Route::get('tools/import/template', [ImportController::class, 'template'])->name('tools.import.template');
+        Route::post('tools/import', [ImportController::class, 'importTools'])->name('tools.import');
+
+        // Kelola Denda
+        Route::get('denda', [\App\Http\Controllers\SettingController::class, 'index'])->name('denda.index');
+        Route::put('denda', [\App\Http\Controllers\SettingController::class, 'update'])->name('denda.update');
     });
 
     // Admin & Petugas (Operasional: Approval Peminjaman, Pengembalian, Laporan)
@@ -47,7 +56,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('returns/{return}/pay-fine', [\App\Http\Controllers\ReturnController::class, 'payFine'])->name('returns.pay-fine');
         
         Route::get('reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/preview', [\App\Http\Controllers\ReportController::class, 'preview'])->name('reports.preview');
         Route::get('reports/print', [\App\Http\Controllers\ReportController::class, 'print'])->name('reports.print');
+        Route::get('reports/export', [\App\Http\Controllers\ExportController::class, 'export'])->name('reports.export');
     });
 
     // Peminjam / Umum (Katalog & Pengajuan Pinjam)

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreToolRequest;
 use App\Http\Requests\UpdateToolRequest;
 use App\Models\Category;
+use App\Models\Setting;
 use App\Models\Tool;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -44,18 +46,36 @@ class ToolController extends Controller
                 'stock_total' => $tool->stock_total,
                 'stock_available' => $tool->stock_available,
                 'description' => $tool->description,
+                'price' => (float) $tool->price,
             ]);
 
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Ambil semua setting denda
+        $settings = Setting::all()->mapWithKeys(fn ($s) => [$s->key => $s->value])->all();
+
         return Inertia::render('tools/index', [
-            'tools' => $tools,
+            'tools'      => $tools,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
-            'stats' => [
-                'total_tools' => Tool::count(),
+            'stats'      => [
+                'total_tools'    => Tool::count(),
                 'available_units' => (int) Tool::sum('stock_available'),
                 'need_attention' => Tool::whereIn('condition_status', ['perlu-servis', 'rusak-ringan', 'rusak-berat'])->count(),
             ],
+            'fineSettings' => [
+                'late_percent'    => (float) ($settings['late_fine_percent']    ?? 0),
+                'damage_percent'  => (float) ($settings['damage_fine_percent']  ?? 0),
+                'loss_percent'    => (float) ($settings['loss_fine_percent']    ?? 0),
+            ],
+            'authUser' => [
+                'name'       => $user->name,
+                'identifier' => $user->identifier ?? '',
+                'phone'      => $user->phone ?? '',
+            ],
         ]);
     }
+
 
     /**
      * Menyimpan profil alat baru beserta proses upload lampiran foto.

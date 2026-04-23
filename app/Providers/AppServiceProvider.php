@@ -28,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Carbon::setTestNow('2026-04-30 10:00:00');
+        
         if (str_contains(config('app.url'), 'ngrok-free.app') || env('APP_ENV') !== 'local') {
             URL::forceScheme('https');
         }

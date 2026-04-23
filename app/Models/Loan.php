@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id',
@@ -29,8 +30,21 @@ class Loan extends Model
         static::creating(function (Loan $loan) {
             if (empty($loan->loan_code)) {
                 $datePrefix = date('Ymd');
-                $countToday = static::whereDate('created_at', date('Y-m-d'))->count();
-                $loan->loan_code = 'TRX-' . $datePrefix . '-' . str_pad($countToday + 1, 4, '0', STR_PAD_LEFT);
+                
+                // Cari kode terakhir yang diawali dengan prefix hari ini
+                $lastLoan = static::where('loan_code', 'like', "TRX-{$datePrefix}-%")
+                    ->latest('id')
+                    ->first();
+
+                if ($lastLoan) {
+                    // Ambil 4 digit terakhir dan tambah 1
+                    $lastNumber = (int) substr($lastLoan->loan_code, -4);
+                    $newNumber = $lastNumber + 1;
+                } else {
+                    $newNumber = 1;
+                }
+
+                $loan->loan_code = 'TRX-' . $datePrefix . '-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
             }
         });
     }
@@ -63,5 +77,13 @@ class Loan extends Model
     public function items(): HasMany
     {
         return $this->hasMany(LoanItem::class);
+    }
+
+    /**
+     * @return HasOne<ToolReturn, $this>
+     */
+    public function toolReturn(): HasOne
+    {
+        return $this->hasOne(ToolReturn::class);
     }
 }

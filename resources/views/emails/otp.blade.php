@@ -5,53 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kode OTP Reset Password</title>
     <style>
+        /* Base Reset */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
-        .wrapper { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-        .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 36px 40px; text-align: center; }
-        .header h1 { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-        .header p { color: rgba(255,255,255,0.75); font-size: 13px; margin-top: 4px; }
-        .body { padding: 36px 40px; }
-        .greeting { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-        .info { font-size: 14px; color: #64748b; line-height: 1.7; margin-bottom: 28px; }
-        .otp-box { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 28px; }
-        .otp-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px; }
-        .otp-code { font-size: 42px; font-weight: 900; letter-spacing: 10px; color: #4f46e5; font-family: monospace; }
-        .expiry { font-size: 12px; color: #94a3b8; text-align: center; margin-top: 8px; }
-        .warning { background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 6px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-bottom: 24px; }
-        .footer { background: #f8fafc; padding: 20px 40px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background-color: #f0f4f8; 
+            color: #334155; 
+            line-height: 1.6;
+        }
+
+        /* Container */
+        .wrapper { 
+            max-width: 500px; 
+            margin: 60px auto; 
+            background: #ffffff; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); 
+        }
+
+        /* Header Modern Blue Gradient */
+        .header { 
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); 
+            padding: 40px 20px; 
+            text-align: center; 
+        }
+        .header h1 { 
+            color: #ffffff; 
+            font-size: 24px; 
+            font-weight: 800; 
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+        .header p { 
+            color: #bfdbfe; 
+            font-size: 14px; 
+            font-weight: 400;
+        }
+
+        /* Body Content */
+        .body { padding: 40px; }
+        
+        .greeting { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #1e293b;
+            margin-bottom: 12px; 
+        }
+        .info { 
+            font-size: 15px; 
+            color: #64748b; 
+            margin-bottom: 30px; 
+        }
+
+        /* Modern OTP Box */
+        .otp-box { 
+            background: #f8fafc; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 12px; 
+            padding: 30px; 
+            text-align: center; 
+            margin-bottom: 30px;
+            box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.02);
+        }
+        .otp-label { 
+            font-size: 13px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            color: #94a3b8; 
+            margin-bottom: 12px; 
+        }
+        .otp-code { 
+            font-size: 48px; 
+            font-weight: 800; 
+            letter-spacing: 8px; 
+            color: #2563eb; 
+            font-family: 'Courier New', Courier, monospace; 
+        }
+        .expiry { 
+            display: inline-block;
+            margin-top: 15px;
+            padding: 4px 12px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 20px;
+            font-size: 12px; 
+            font-weight: 600;
+        }
+
+        /* Alert Warning */
+        .warning { 
+            background: #fff9f2; 
+            border-radius: 8px; 
+            padding: 16px; 
+            font-size: 13px; 
+            color: #9a3412; 
+            border: 1px solid #fed7aa;
+            margin-bottom: 24px; 
+        }
+
+        /* Footer */
+        .footer { 
+            background: #f8fafc; 
+            padding: 30px; 
+            text-align: center; 
+            font-size: 12px; 
+            color: #94a3b8; 
+            border-top: 1px solid #e2e8f0; 
+        }
+        .footer strong { color: #64748b; }
+
+        /* Mobile Optimization */
+        @media only screen and (max-width: 480px) {
+            .wrapper { margin: 20px; width: auto; }
+            .body { padding: 24px; }
+            .otp-code { font-size: 36px; letter-spacing: 5px; }
+        }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>🔐 SispemTB</h1>
-            <p>Sistem Peminjaman Alat SMK TB</p>
+            <h1>SispemTB</h1>
+            <p>Sistem Peminjaman Alat SMK Taruna Bhakti</p>
         </div>
+        
         <div class="body">
             <p class="greeting">Halo, {{ $userName }}!</p>
             <p class="info">
-                Kami menerima permintaan untuk mereset kata sandi akun Anda.
-                Gunakan kode OTP berikut untuk melanjutkan proses reset password.
+                Kami menerima permintaan untuk pengaturan ulang kata sandi akun Anda. 
+                Silakan gunakan kode keamanan di bawah ini:
             </p>
 
             <div class="otp-box">
-                <div class="otp-label">Kode OTP Anda</div>
+                <div class="otp-label">Kode Keamanan</div>
                 <div class="otp-code">{{ $otp }}</div>
-                <div class="expiry">⏱ Berlaku selama <strong>10 menit</strong></div>
+                <div class="expiry">⏱ Berlaku selama 10 menit</div>
             </div>
 
             <div class="warning">
-                ⚠️ <strong>Jangan bagikan kode ini</strong> kepada siapapun! Tim SispemTB tidak akan pernah meminta kode OTP Anda.
+                <strong>Penting:</strong> Jangan bagikan kode ini kepada siapapun. Pihak sekolah tidak akan pernah meminta kode ini melalui media apapun.
             </div>
 
-            <p class="info" style="font-size: 13px;">
-                Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini dan kata sandi Anda tidak akan berubah.
+            <p class="info" style="font-size: 13px; margin-bottom: 0;">
+                Jika Anda tidak melakukan permintaan ini, abaikan email ini. Keamanan akun Anda tetap terjaga.
             </p>
         </div>
+
         <div class="footer">
-            &copy; {{ date('Y') }} SispemTB &mdash; Sistem Peminjaman Alat SMK Taruna Bhakti<br>
-            Email ini dikirim secara otomatis, harap tidak membalas.
+            &copy; {{ date('Y') }} <strong>SispemTB</strong> &bull; Depok, Indonesia<br>
+            <span style="display:block; margin-top: 8px;">Email otomatis, mohon tidak membalas pesan ini.</span>
         </div>
     </div>
 </body>

@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Boxes, ClipboardList, LayoutGrid, Package, Users, Activity, Undo2, Printer } from 'lucide-react';
+import { Boxes, ClipboardList, LayoutGrid, Package, Users, Activity, Undo2, Printer, CircleDollarSign } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -37,6 +37,7 @@ export function AppSidebar() {
             { title: 'Peminjaman', href: '/loans', icon: ClipboardList },
             { title: 'Pengembalian', href: '/returns', icon: Undo2 },
             { title: 'Cetak Laporan', href: '/reports', icon: Printer },
+            { title: 'Kelola Denda', href: '/denda', icon: CircleDollarSign },
             { title: 'Log Aktifitas', href: '/logs', icon: Activity },
         );
     } else if (role === 'petugas') {

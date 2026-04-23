@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'stock_total',
     'stock_available',
     'description',
+    'price',
 ])]
 class Tool extends Model
 {

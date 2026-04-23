@@ -3,6 +3,7 @@ import {
     AlertTriangle,
     Archive,
     BadgeCheck,
+    Banknote,
     CheckCircle2,
     CircleDollarSign,
     Clock,
@@ -95,7 +96,7 @@ function isLate(dueDate: string | null, returnDate: string): boolean {
 
 export default function ReturnsIndex({ returns, stats, filters }: Props) {
     const { auth } = usePage<SharedData>().props;
-    const isAdminOrPetugas = auth.user?.roles?.some((r: any) => ['admin', 'petugas'].includes(r));
+    const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user?.role ?? '');
 
     const [search, setSearch] = useState(filters.search ?? '');
     const [paymentFilter, setPaymentFilter] = useState(filters.payment_status ?? 'all');
@@ -408,24 +409,43 @@ export default function ReturnsIndex({ returns, stats, filters }: Props) {
 
                     {payTarget && (
                         <div className="space-y-4">
+                            {/* Banner Pembayaran Cash */}
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 p-3 flex items-start gap-3">
+                                <Banknote className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Pembayaran Tunai (Cash)</p>
+                                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                                        Pastikan peminjam sudah menyerahkan uang tunai secara langsung sebelum mengkonfirmasi pelunasan ini.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Rincian Denda */}
                             <div className="rounded-xl border border-dashed border-border p-4 space-y-2 bg-muted/30">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Peminjam</span>
                                     <span className="font-medium">{payTarget.loan?.borrower_name}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Denda Keterlambatan</span>
-                                    <span className="font-mono">{formatRupiah(payTarget.fine)}</span>
+                                    <span className="text-muted-foreground">Kode Pinjam</span>
+                                    <span className="font-mono text-xs">{payTarget.loan?.loan_code ?? `#${payTarget.loan_id}`}</span>
                                 </div>
+                                <div className="border-t border-border/50 my-1" />
+                                {payTarget.fine > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Denda Keterlambatan</span>
+                                        <span className="font-mono text-rose-600">{formatRupiah(payTarget.fine)}</span>
+                                    </div>
+                                )}
                                 {(payTarget.damage_fine ?? 0) > 0 && (
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Denda Kerusakan</span>
+                                        <span className="text-muted-foreground">Denda Kerusakan/Hilang</span>
                                         <span className="font-mono text-orange-600">{formatRupiah(payTarget.damage_fine)}</span>
                                     </div>
                                 )}
                                 <div className="border-t border-border pt-2 flex justify-between">
-                                    <span className="font-semibold">Total Denda</span>
-                                    <span className="font-bold text-lg font-mono text-rose-600">
+                                    <span className="font-semibold">Total yang Harus Dibayar</span>
+                                    <span className="font-bold text-xl font-mono text-rose-600">
                                         {formatRupiah((payTarget.fine ?? 0) + (payTarget.damage_fine ?? 0))}
                                     </span>
                                 </div>
@@ -445,9 +465,9 @@ export default function ReturnsIndex({ returns, stats, filters }: Props) {
                             {paying ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                                <CheckCircle2 className="h-4 w-4" />
+                                <Banknote className="h-4 w-4" />
                             )}
-                            {paying ? 'Memproses...' : 'Ya, Denda Lunas'}
+                            {paying ? 'Memproses...' : 'Konfirmasi Pembayaran Cash'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

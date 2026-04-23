@@ -33,6 +33,7 @@ class UpdateToolRequest extends FormRequest
             'stock_total' => ['required', 'integer', 'min:0'],
             'stock_available' => ['required', 'integer', 'min:0', 'lte:stock_total'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'price' => ['required', 'numeric', 'min:0'],
         ];
     }
 }
