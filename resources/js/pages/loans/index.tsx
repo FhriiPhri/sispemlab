@@ -1,5 +1,5 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { AlertTriangle, Banknote, CircleDollarSign, ClipboardList, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, ClipboardList, CreditCard, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { SharedData } from '@/types';
+import { MidtransSnapButton } from '@/components/midtrans-snap-button';
 
 type Loan = {
     id: number;
@@ -57,6 +58,7 @@ type Loan = {
     fine: number | null;
     damage_fine: number | null;
     total_fine: number | null;
+    return_id: number | null;
     payment_status: 'paid' | 'unpaid' | null;
     items: Array<{
         tool_id: number;
@@ -106,6 +108,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
     const [returnLoan, setReturnLoan] = useState<Loan | null>(null);
+    const [userPayTarget, setUserPayTarget] = useState<Loan | null>(null);
     const [returning, setReturning] = useState(false);
 
     const nowLocal = () =>
@@ -487,8 +490,8 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                     <div>
                         <p className="text-sm font-semibold text-rose-800 dark:text-rose-300">Anda Memiliki Denda yang Belum Dibayar</p>
                         <p className="text-xs text-rose-700 dark:text-rose-400 mt-1">
-                            Silakan bayar denda secara <strong>tunai (cash)</strong> langsung kepada Admin atau Petugas.
-                            Setelah pembayaran diterima, petugas akan mengkonfirmasi pelunasan di sistem.
+                            Klik tombol <strong>"Bayar Denda"</strong> di kolom aksi untuk membayar secara online via Midtrans (GoPay, QRIS, Transfer Bank, dll).
+                            Setelah pembayaran berhasil, status akan diperbarui secara otomatis.
                         </p>
                     </div>
                 </div>
@@ -561,7 +564,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                                                                 type="button"
                                                                 size="sm"
                                                                 className="h-8"
-                                                                onClick={() => router.patch(`/loans/${loan.id}/status`, { status: 'approved' }, { preserveScroll: true })}
+                                                                onClick={(e) => { e.stopPropagation(); router.patch(`/loans/${loan.id}/status`, { status: 'approved' }, { preserveScroll: true }); }}
                                                             >
                                                                 <ShieldCheck className="mr-1 h-3 w-3" /> Setujui
                                                             </Button>
@@ -570,7 +573,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                                                                 size="sm"
                                                                 variant="destructive"
                                                                 className="h-8"
-                                                                onClick={() => router.patch(`/loans/${loan.id}/status`, { status: 'rejected' }, { preserveScroll: true })}
+                                                                onClick={(e) => { e.stopPropagation(); router.patch(`/loans/${loan.id}/status`, { status: 'rejected' }, { preserveScroll: true }); }}
                                                             >
                                                                 Tolak
                                                             </Button>
@@ -583,7 +586,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                                                                 size="sm"
                                                                 variant="outline"
                                                                 className="h-8 shadow-none"
-                                                                onClick={() => router.patch(`/loans/${loan.id}/status`, { status: 'borrowed' }, { preserveScroll: true })}
+                                                                onClick={(e) => { e.stopPropagation(); router.patch(`/loans/${loan.id}/status`, { status: 'borrowed' }, { preserveScroll: true }); }}
                                                             >
                                                                 Beri Akses Pinjam
                                                             </Button>
@@ -603,35 +606,56 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                                                     )}
                                                 </>
                                             )}
-                                             {auth.user.role === 'peminjam' && loan.status === 'borrowed' && (
+                                            {auth.user.role === 'peminjam' && loan.status === 'borrowed' && (
                                                 <Button
                                                     type="button"
                                                     size="sm"
                                                     className="h-8"
-                                                    onClick={() => router.post(`/loans/${loan.id}/return-request`, {}, { preserveScroll: true })}
+                                                    onClick={(e) => { e.stopPropagation(); router.post(`/loans/${loan.id}/return-request`, {}, { preserveScroll: true }); }}
                                                 >
                                                     <RotateCcw className="mr-1 h-3 w-3" />
                                                     Kembalikan Alat
                                                 </Button>
                                             )}
-                                            {/* Badge denda untuk peminjam pada status returned */}
+                                            {/* Badge / Tombol denda untuk peminjam pada status returned */}
                                             {auth.user.role === 'peminjam' && loan.status === 'returned' && loan.total_fine !== null && (
-                                                <div className="text-right">
+                                                <div className="text-right" onClick={(e) => e.stopPropagation()}>
                                                     {loan.total_fine > 0 ? (
-                                                        <div className={`inline-flex flex-col items-end gap-0.5`}>
-                                                            <Badge
-                                                                variant="outline"
-                                                                className={`text-xs font-semibold border-transparent ${
-                                                                    loan.payment_status === 'paid'
-                                                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                                                        : 'bg-rose-100 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300'
-                                                                }`}
-                                                            >
-                                                                {loan.payment_status === 'paid' ? '✓ Lunas' : '⚠ Belum Lunas'}
-                                                            </Badge>
-                                                            <span className="text-xs font-mono text-muted-foreground">
-                                                                Rp {loan.total_fine.toLocaleString('id-ID')}
-                                                            </span>
+                                                        <div className="inline-flex flex-col items-end gap-1.5">
+                                                            {loan.payment_status === 'unpaid' ? (
+                                                                <div className="flex flex-col items-end gap-2">
+                                                                    <div className="flex flex-col items-end">
+                                                                        <span className="text-[10px] uppercase font-bold tracking-wider text-rose-500">Denda Tertunggak</span>
+                                                                        <span className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">
+                                                                            Rp {loan.total_fine.toLocaleString('id-ID')}
+                                                                        </span>
+                                                                    </div>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-8 gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-sm w-full sm:w-auto"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setUserPayTarget(loan);
+                                                                        }}
+                                                                    >
+                                                                        <Banknote className="h-3.5 w-3.5" />
+                                                                        Pilih Pembayaran
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col items-end gap-1">
+                                                                    <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Total Denda</span>
+                                                                    <span className="text-sm font-bold font-mono text-muted-foreground">
+                                                                        Rp {loan.total_fine.toLocaleString('id-ID')}
+                                                                    </span>
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="mt-0.5 text-xs font-semibold border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                                                    >
+                                                                        ✓ Lunas
+                                                                    </Badge>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300 border-transparent">
@@ -670,7 +694,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
 
             {/* Detail Dialog */}
             <Dialog open={!!detailLoan} onOpenChange={(open) => !open && setDetailLoan(null)}>
-                <DialogContent className="sm:max-w-3xl max-w-[96vw] p-0 overflow-hidden max-h-[92vh] flex flex-col">
+                <DialogContent className="sm:max-w-3xl max-w-[96vw] p-0 overflow-hidden max-h-[92vh] flex flex-col rounded-2xl">
                     {detailLoan && (() => {
                         const statusGradients: Record<string, string> = {
                             pending:  'from-amber-500/20 via-amber-500/10 to-transparent',
@@ -689,7 +713,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                         return (
                             <>
                                 {/* Hero Header */}
-                                <div className={`relative bg-gradient-to-br ${statusGradients[detailLoan.status] ?? 'from-muted/30 to-transparent'} px-7 pt-8 pb-6 border-b border-border/40`}>
+                                <div className={`relative bg-gradient-to-br ${statusGradients[detailLoan.status] ?? 'from-muted/30 to-transparent'} px-4 sm:px-7 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-border/40`}>
                                     <div className="flex items-start justify-between gap-4 pr-8">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
@@ -709,9 +733,9 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                                 </div>
 
                                 {/* Body */}
-                                <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                                <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-6">
                                     {/* 2 kolom: Identitas + Jadwal */}
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                                         {/* Identitas */}
                                         <div className="space-y-1">
                                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Identitas Peminjam</p>
@@ -790,6 +814,63 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                                             ))}
                                         </div>
                                     </div>
+
+                                    {/* Rincian Denda & Pembayaran (Tampil jika ada denda) */}
+                                    {(detailLoan.total_fine ?? 0) > 0 && (
+                                        <div>
+                                            <Separator className="mb-6" />
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Rincian Denda & Status</p>
+                                            <div className={`rounded-xl border p-4 space-y-3 ${detailLoan.payment_status === 'paid' ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20' : 'bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20'}`}>
+                                                {detailLoan.fine && detailLoan.fine > 0 ? (
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground">Denda Keterlambatan</span>
+                                                        <span className="font-mono">{detailLoan.fine.toLocaleString('id-ID')}</span>
+                                                    </div>
+                                                ) : null}
+                                                
+                                                {detailLoan.damage_fine && detailLoan.damage_fine > 0 ? (
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground">Denda Kerusakan/Hilang</span>
+                                                        <span className="font-mono">{detailLoan.damage_fine.toLocaleString('id-ID')}</span>
+                                                    </div>
+                                                ) : null}
+
+                                                <div className="border-t border-border/50 my-1 pt-2 flex justify-between items-center">
+                                                    <span className="font-semibold">Total Denda</span>
+                                                    <span className={`font-bold text-lg font-mono ${detailLoan.payment_status === 'unpaid' ? 'text-rose-600' : ''}`}>Rp {detailLoan.total_fine?.toLocaleString('id-ID')}</span>
+                                                </div>
+
+                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/50">
+                                                    <span className="text-sm font-medium">Status Pembayaran</span>
+                                                    {detailLoan.payment_status === 'paid' ? (
+                                                        <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 hover:bg-emerald-200 gap-1 border-transparent">
+                                                            <ShieldCheck className="h-3 w-3" /> Lunas
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300 hover:bg-rose-200 gap-1 border-transparent">
+                                                            <AlertTriangle className="h-3 w-3" /> Belum Lunas
+                                                        </Badge>
+                                                    )}
+                                                </div>
+
+                                                {detailLoan.payment_status === 'unpaid' && auth.user.role === 'peminjam' && (
+                                                    <div className="pt-3 flex justify-end">
+                                                        <Button
+                                                            size="sm"
+                                                            className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                                                            onClick={() => {
+                                                                setDetailLoan(null);
+                                                                setUserPayTarget(detailLoan);
+                                                            }}
+                                                        >
+                                                            <Banknote className="h-3.5 w-3.5 mr-1.5" />
+                                                            Lunasi Sekarang
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {detailLoan.notes && (
                                         <div>
@@ -906,7 +987,7 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                             />
                         </div>
 
-                        {/* Ringkasan Denda */}
+
                         {previewTotal > 0 && (
                             <div className="rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-500/10 dark:border-orange-500/30 p-4 space-y-2">
                                 <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-1.5">
@@ -972,6 +1053,63 @@ export default function LoansIndex({ loans, tools, stats, fineSettings = { late_
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* ===== Dialog Opsi Pembayaran (User) ===== */}
+            <Dialog open={!!userPayTarget} onOpenChange={(open) => !open && setUserPayTarget(null)}>
+                <DialogContent className="sm:max-w-md max-w-[95vw]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Banknote className="h-5 w-5 text-emerald-600" />
+                            Pilih Metode Pembayaran
+                        </DialogTitle>
+                        <DialogDescription>
+                            Denda untuk peminjaman {userPayTarget?.loan_code ?? `#${userPayTarget?.id}`} sebesar <strong className="text-foreground">Rp {userPayTarget?.total_fine?.toLocaleString('id-ID')}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex flex-col gap-4 py-4">
+                        <div className="rounded-xl border p-4 bg-card hover:bg-muted/50 transition-colors flex flex-col items-center justify-center gap-3 text-center">
+                            <div className="p-3 bg-sky-100 dark:bg-sky-500/10 rounded-full">
+                                <CreditCard className="h-6 w-6 text-sky-600 dark:text-sky-400" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-sm">Pembayaran Online (Midtrans)</h4>
+                                <p className="text-xs text-muted-foreground mt-1 mb-3">Otomatis lunas menggunakan GoPay, QRIS, Transfer Bank, dll.</p>
+                                {userPayTarget && (
+                                    <MidtransSnapButton
+                                        returnId={userPayTarget.return_id!}
+                                        totalFine={userPayTarget.total_fine ?? 0}
+                                        paymentStatus={userPayTarget.payment_status ?? 'unpaid'}
+                                        onBeforeSnap={() => setUserPayTarget(null)}
+                                        onSuccess={() => {
+                                            setUserPayTarget(null);
+                                            router.reload();
+                                        }}
+                                        className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-amber-200 p-4 bg-amber-50/50 dark:bg-amber-500/5 dark:border-amber-500/20 transition-colors flex flex-col items-center justify-center gap-3 text-center">
+                            <div className="p-3 bg-amber-100 dark:bg-amber-500/20 rounded-full">
+                                <Banknote className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-100">Pembayaran Tunai (Cash)</h4>
+                                <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-1">
+                                    Silahkan temui Petugas/Admin Lab dan serahkan uang tunai secara langsung. Status akan diubah menjadi lunas oleh Admin setelah uang diterima.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                        <Button variant="outline" onClick={() => setUserPayTarget(null)}>Tutup</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }

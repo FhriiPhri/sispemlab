@@ -1,9 +1,23 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { AlertTriangle, Download, FileSpreadsheet, Loader2, Package, Pencil, Plus, Send, Trash2, Upload, X } from 'lucide-react';
+import {
+    AlertTriangle,
+    Download,
+    FileSpreadsheet,
+    Loader2,
+    Package,
+    Pencil,
+    Plus,
+    Send,
+    Trash2,
+    Upload,
+    X,
+} from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
-import TablePagination, { type PaginatedData } from '@/components/table-pagination';
+import TablePagination, {
+    type PaginatedData,
+} from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,7 +81,11 @@ type Tool = {
 type Props = {
     tools: PaginatedData<Tool>;
     categories: CategoryOption[];
-    fineSettings?: { late_percent: number; damage_percent: number; loss_percent: number };
+    fineSettings?: {
+        late_percent: number;
+        damage_percent: number;
+        loss_percent: number;
+    };
     authUser?: { name: string; identifier: string; phone: string };
     stats: {
         total_tools: number;
@@ -86,55 +104,76 @@ const conditionOptions = [
     { value: 'rusak-berat', label: 'Rusak berat' },
 ];
 
-export default function ToolsIndex({ 
-    tools, 
-    categories, 
-    stats, 
-    fineSettings = { late_percent: 0, damage_percent: 0, loss_percent: 0 }, 
-    authUser 
+export default function ToolsIndex({
+    tools,
+    categories,
+    stats,
+    fineSettings = { late_percent: 0, damage_percent: 0, loss_percent: 0 },
+    authUser,
 }: Props) {
     const { auth } = usePage<SharedData>().props;
-    const user = authUser || (auth?.user ? {
-        name: auth.user.name,
-        identifier: auth.user.identifier || '',
-        phone: auth.user.phone || ''
-    } : { name: '', identifier: '', phone: '' });
-    
+    const user =
+        authUser ||
+        (auth?.user
+            ? {
+                  name: auth.user.name,
+                  identifier: auth.user.identifier || '',
+                  phone: auth.user.phone || '',
+              }
+            : { name: '', identifier: '', phone: '' });
+
     const isPeminjam = auth?.user?.role === 'peminjam';
     const toolsList = tools?.data || [];
 
-    const [isCreateOpen,  setIsCreateOpen]  = useState(false);
-    const [selectedTool,  setSelectedTool]  = useState<Tool | null>(null);
-    const [detailTool,    setDetailTool]    = useState<Tool | null>(null);
-    const [pinjamTool,    setPinjamTool]    = useState<Tool | null>(null);
-    const [isImportOpen,  setIsImportOpen]  = useState(false);
-    const [importFile,    setImportFile]    = useState<File | null>(null);
-    const [importing,     setImporting]     = useState(false);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+    const [detailTool, setDetailTool] = useState<Tool | null>(null);
+    const [pinjamTool, setPinjamTool] = useState<Tool | null>(null);
+    const [isImportOpen, setIsImportOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importing, setImporting] = useState(false);
 
-    const nowLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const nowLocal = () =>
+        new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16);
 
     const loanForm = useForm({
-        borrower_name:       user.name || '',
+        borrower_name: user.name || '',
         borrower_identifier: user.identifier || '',
-        borrower_phone:      user.phone || '',
-        purpose:             '',
-        loan_date:           nowLocal(),
-        return_due_date:     new Date(Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000).toISOString().slice(0, 16),
-        notes:               '',
-        items:               [{ tool_id: '', quantity: 1, condition_out: 'baik' }],
+        borrower_phone: user.phone || '',
+        purpose: '',
+        loan_date: nowLocal(),
+        return_due_date: new Date(
+            Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000,
+        )
+            .toISOString()
+            .slice(0, 16),
+        notes: '',
+        items: [{ tool_id: '', quantity: 1, condition_out: 'baik' }],
     });
 
     const openLoanForm = (tool: Tool) => {
         loanForm.reset();
         loanForm.setData({
-            borrower_name:       user.name || '',
+            borrower_name: user.name || '',
             borrower_identifier: user.identifier || '',
-            borrower_phone:      user.phone || '',
-            purpose:             '',
-            loan_date:           nowLocal(),
-            return_due_date:     new Date(Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000).toISOString().slice(0, 16),
-            notes:               '',
-            items:               [{ tool_id: String(tool.id), quantity: 1, condition_out: 'baik' }],
+            borrower_phone: user.phone || '',
+            purpose: '',
+            loan_date: nowLocal(),
+            return_due_date: new Date(
+                Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000,
+            )
+                .toISOString()
+                .slice(0, 16),
+            notes: '',
+            items: [
+                {
+                    tool_id: String(tool.id),
+                    quantity: 1,
+                    condition_out: 'baik',
+                },
+            ],
         });
         setDetailTool(null);
         setPinjamTool(tool);
@@ -144,14 +183,19 @@ export default function ToolsIndex({
         e.preventDefault();
         loanForm.transform((data) => ({
             ...data,
-            items: data.items.map((item) => ({ ...item, tool_id: Number(item.tool_id) })),
+            items: data.items.map((item) => ({
+                ...item,
+                tool_id: Number(item.tool_id),
+            })),
         }));
         loanForm.post('/loans', {
             preserveScroll: true,
             onSuccess: () => {
                 setPinjamTool(null);
                 loanForm.reset();
-                toast.success('Pengajuan peminjaman berhasil dikirim! Menunggu persetujuan.');
+                toast.success(
+                    'Pengajuan peminjaman berhasil dikirim! Menunggu persetujuan.',
+                );
             },
             onError: (errs) => {
                 const msg = Object.values(errs)[0];
@@ -232,7 +276,7 @@ export default function ToolsIndex({
                     'location',
                     'description',
                     'price',
-                    'image'
+                    'image',
                 );
                 setIsCreateOpen(false);
                 toast.success('Alat baru berhasil ditambahkan!');
@@ -241,9 +285,10 @@ export default function ToolsIndex({
                 const messages = Object.values(errors);
                 if (messages.length > 0) {
                     toast.error(messages[0], {
-                        description: messages.length > 1
-                            ? `${messages.length - 1} field lain juga belum diisi dengan benar.`
-                            : undefined,
+                        description:
+                            messages.length > 1
+                                ? `${messages.length - 1} field lain juga belum diisi dengan benar.`
+                                : undefined,
                     });
                 }
             },
@@ -270,9 +315,10 @@ export default function ToolsIndex({
                 const messages = Object.values(errors);
                 if (messages.length > 0) {
                     toast.error(messages[0], {
-                        description: messages.length > 1
-                            ? `${messages.length - 1} field lain juga bermasalah.`
-                            : undefined,
+                        description:
+                            messages.length > 1
+                                ? `${messages.length - 1} field lain juga bermasalah.`
+                                : undefined,
                     });
                 }
             },
@@ -287,40 +333,78 @@ export default function ToolsIndex({
 
     if (isPeminjam) {
         return (
-            <div className="space-y-6 p-4 md:p-6 w-full max-w-full overflow-hidden">
+            <div className="w-full max-w-full space-y-6 overflow-hidden p-4 md:p-6">
                 <Heading
                     title="Katalog Alat"
                     description="Daftar koleksi alat yang dapat dipinjam saat ini beserta rincian stoknya."
                 />
                 <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     {toolsList.map((tool) => (
-                        <Card key={tool.id} className="flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 bg-card/60 backdrop-blur-sm overflow-hidden">
+                        <Card
+                            key={tool.id}
+                            className="group flex flex-col overflow-hidden bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5"
+                        >
                             {tool.image_url && (
-                                <div className="aspect-[4/3] w-full overflow-hidden bg-muted border-b">
-                                    <img src={tool.image_url} alt={tool.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                <div className="aspect-[4/3] w-full overflow-hidden border-b bg-muted">
+                                    <img
+                                        src={tool.image_url}
+                                        alt={tool.name}
+                                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                    />
                                 </div>
                             )}
-                            <CardHeader className={tool.image_url ? "pb-3 pt-4" : "pb-3"}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    {!tool.image_url && <Package className="h-5 w-5 text-primary" />}
-                                    <Badge variant="secondary" className="transition-colors group-hover:bg-secondary/80">{tool.category_name ?? 'Tanpa kategori'}</Badge>
-                                </div>
-                                <CardTitle className="text-xl">{tool.name}</CardTitle>
-                                <CardDescription>Kode: {tool.code}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex flex-col gap-3 flex-1">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-muted-foreground">Tersedia:</span>
-                                    <Badge className={tool.stock_available > 0 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300"}>
-                                        {tool.stock_available} / {tool.stock_total} Unit
+                            <CardHeader
+                                className={
+                                    tool.image_url ? 'pt-4 pb-3' : 'pb-3'
+                                }
+                            >
+                                <div className="mb-2 flex items-center gap-2">
+                                    {!tool.image_url && (
+                                        <Package className="h-5 w-5 text-primary" />
+                                    )}
+                                    <Badge
+                                        variant="secondary"
+                                        className="transition-colors group-hover:bg-secondary/80"
+                                    >
+                                        {tool.category_name ?? 'Tanpa kategori'}
                                     </Badge>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-muted-foreground">Kondisi:</span>
-                                    <span className="font-medium capitalize">{tool.condition_status.replace('-', ' ')}</span>
+                                <CardTitle className="text-xl">
+                                    {tool.name}
+                                </CardTitle>
+                                <CardDescription>
+                                    Kode: {tool.code}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex flex-1 flex-col gap-3">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                        Tersedia:
+                                    </span>
+                                    <Badge
+                                        className={
+                                            tool.stock_available > 0
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                                : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                                        }
+                                    >
+                                        {tool.stock_available} /{' '}
+                                        {tool.stock_total} Unit
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                        Kondisi:
+                                    </span>
+                                    <span className="font-medium capitalize">
+                                        {tool.condition_status.replace(
+                                            '-',
+                                            ' ',
+                                        )}
+                                    </span>
                                 </div>
                                 {tool.description && (
-                                    <p className="text-xs text-muted-foreground mt-2 line-clamp-3">
+                                    <p className="mt-2 line-clamp-3 text-xs text-muted-foreground">
                                         {tool.description}
                                     </p>
                                 )}
@@ -331,7 +415,9 @@ export default function ToolsIndex({
                                         </Button>
                                     ) : (
                                         <Button asChild className="w-full">
-                                            <a href={`/loans?tool_id=${tool.id}`}>
+                                            <a
+                                                href={`/loans?tool_id=${tool.id}`}
+                                            >
                                                 Pinjam Alat Ini
                                             </a>
                                         </Button>
@@ -341,9 +427,9 @@ export default function ToolsIndex({
                         </Card>
                     ))}
                     {toolsList.length === 0 && (
-                         <div className="col-span-full rounded-[1.25rem] border border-dashed border-border py-12 text-center text-sm text-muted-foreground shadow-sm">
+                        <div className="col-span-full rounded-[1.25rem] border border-dashed border-border py-12 text-center text-sm text-muted-foreground shadow-sm">
                             Katalog alat saat ini sedang kosong.
-                         </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -351,8 +437,8 @@ export default function ToolsIndex({
     }
 
     return (
-        <div className="space-y-6 p-4 md:p-6 w-full max-w-full overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="w-full max-w-full space-y-6 overflow-hidden p-4 md:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <Heading
                     title="Manajemen Data Alat"
                     description="Simpan identitas alat, kondisi, lokasi, dan ketersediaan stok."
@@ -361,22 +447,31 @@ export default function ToolsIndex({
                 {auth.user.role === 'admin' && (
                     <div className="flex flex-wrap items-center gap-2">
                         {/* Tombol Import */}
-                        <Button variant="outline" className="gap-2" onClick={() => setIsImportOpen(true)}>
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => setIsImportOpen(true)}
+                        >
                             <Upload className="h-4 w-4" />
                             Import Excel
                         </Button>
 
                         {/* Tombol Tambah Manual */}
-                        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                        <Dialog
+                            open={isCreateOpen}
+                            onOpenChange={setIsCreateOpen}
+                        >
                             <DialogTrigger asChild>
                                 <Button>
                                     <Plus className="mr-2 h-4 w-4" />
                                     Tambah Alat
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
+                            <DialogContent className="max-h-[92vh] w-full max-w-[95vw] overflow-y-auto sm:max-w-3xl sm:p-8">
                                 <DialogHeader>
-                                    <DialogTitle>Registrasi Alat Baru</DialogTitle>
+                                    <DialogTitle>
+                                        Registrasi Alat Baru
+                                    </DialogTitle>
                                     <DialogDescription>
                                         Masukkan data inventaris baru ke sistem.
                                     </DialogDescription>
@@ -421,19 +516,27 @@ export default function ToolsIndex({
                 </Card>
             </div>
 
-            <Card className="overflow-hidden border-border/60 bg-card/50 backdrop-blur-xl shadow-md">
+            <Card className="overflow-hidden border-border/60 bg-card/50 shadow-md backdrop-blur-xl">
                 <div className="overflow-x-auto pb-4">
                     <Table className="min-w-[800px]">
                         <TableHeader className="bg-muted/30">
                             <TableRow>
                                 <TableHead className="w-[80px]">Kode</TableHead>
-                                <TableHead className="min-w-[200px]">Nama Alat</TableHead>
+                                <TableHead className="min-w-[200px]">
+                                    Nama Alat
+                                </TableHead>
                                 <TableHead>Kategori</TableHead>
                                 <TableHead>Kondisi</TableHead>
-                                <TableHead className="text-center">Stok</TableHead>
-                                <TableHead className="text-right">Harga</TableHead>
+                                <TableHead className="text-center">
+                                    Stok
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    Harga
+                                </TableHead>
                                 {auth.user.role === 'admin' && (
-                                    <TableHead className="text-right w-[150px]">Aksi</TableHead>
+                                    <TableHead className="w-[150px] text-right">
+                                        Aksi
+                                    </TableHead>
                                 )}
                             </TableRow>
                         </TableHeader>
@@ -441,10 +544,15 @@ export default function ToolsIndex({
                             {toolsList.map((tool) => (
                                 <TableRow
                                     key={tool.id}
-                                    className="group transition-colors cursor-pointer hover:bg-muted/50"
+                                    className="group cursor-pointer transition-colors hover:bg-muted/50"
                                     onClick={(e) => {
                                         // Jangan buka detail jika klik tombol aksi
-                                        if ((e.target as HTMLElement).closest('button')) return;
+                                        if (
+                                            (e.target as HTMLElement).closest(
+                                                'button',
+                                            )
+                                        )
+                                            return;
                                         setDetailTool(tool);
                                     }}
                                 >
@@ -454,9 +562,13 @@ export default function ToolsIndex({
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-3">
                                             {tool.image_url ? (
-                                                <img src={tool.image_url} alt={tool.name} className="h-10 w-10 rounded-md object-cover border" />
+                                                <img
+                                                    src={tool.image_url}
+                                                    alt={tool.name}
+                                                    className="h-10 w-10 rounded-md border object-cover"
+                                                />
                                             ) : (
-                                                <div className="h-10 w-10 rounded-md border border-dashed flex items-center justify-center bg-muted/50">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-md border border-dashed bg-muted/50">
                                                     <Package className="h-4 w-4 text-muted-foreground" />
                                                 </div>
                                             )}
@@ -464,20 +576,35 @@ export default function ToolsIndex({
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary" className="font-normal text-xs">
+                                        <Badge
+                                            variant="secondary"
+                                            className="text-xs font-normal"
+                                        >
                                             {tool.category_name ?? '-'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <span className={`text-xs capitalize px-2 py-1 rounded-full border ${tool.condition_status === 'baik' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
-                                            {tool.condition_status.replace('-', ' ')}
+                                        <span
+                                            className={`rounded-full border px-2 py-1 text-xs capitalize ${tool.condition_status === 'baik' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400' : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400'}`}
+                                        >
+                                            {tool.condition_status.replace(
+                                                '-',
+                                                ' ',
+                                            )}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        {tool.stock_available}/{tool.stock_total}
+                                        {tool.stock_available}/
+                                        {tool.stock_total}
                                     </TableCell>
                                     <TableCell className="text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">
-                                        {tool.price > 0 ? `Rp ${tool.price.toLocaleString('id-ID')}` : <span className="text-muted-foreground text-xs">Belum diset</span>}
+                                        {tool.price > 0 ? (
+                                            `Rp ${tool.price.toLocaleString('id-ID')}`
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">
+                                                Belum diset
+                                            </span>
+                                        )}
                                     </TableCell>
                                     {auth.user.role === 'admin' && (
                                         <TableCell className="text-right">
@@ -486,19 +613,27 @@ export default function ToolsIndex({
                                                     variant="ghost"
                                                     size="sm"
                                                     className="h-8 shadow-none"
-                                                    onClick={() => setSelectedTool(tool)}
+                                                    onClick={() =>
+                                                        setSelectedTool(tool)
+                                                    }
                                                 >
                                                     <Pencil className="h-4 w-4" />
-                                                    <span className="sr-only">Edit</span>
+                                                    <span className="sr-only">
+                                                        Edit
+                                                    </span>
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-8 shadow-none text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                                                    onClick={() => handleDelete(tool)}
+                                                    className="h-8 text-rose-500 shadow-none hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
+                                                    onClick={() =>
+                                                        handleDelete(tool)
+                                                    }
                                                 >
                                                     <Trash2 className="h-4 w-4" />
-                                                    <span className="sr-only">Hapus</span>
+                                                    <span className="sr-only">
+                                                        Hapus
+                                                    </span>
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -507,8 +642,14 @@ export default function ToolsIndex({
                             ))}
                             {toolsList.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={auth.user.role === 'admin' ? 7 : 6} className="h-24 text-center text-muted-foreground">
-                                        Belum ada data alat yang diinputkan ke sistem.
+                                    <TableCell
+                                        colSpan={
+                                            auth.user.role === 'admin' ? 7 : 6
+                                        }
+                                        className="h-24 text-center text-muted-foreground"
+                                    >
+                                        Belum ada data alat yang diinputkan ke
+                                        sistem.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -529,8 +670,11 @@ export default function ToolsIndex({
                 />
             </Card>
 
-            <Dialog open={!!selectedTool} onOpenChange={(open) => !open && setSelectedTool(null)}>
-                <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[92vh] overflow-y-auto sm:p-8">
+            <Dialog
+                open={!!selectedTool}
+                onOpenChange={(open) => !open && setSelectedTool(null)}
+            >
+                <DialogContent className="max-h-[92vh] w-full max-w-[95vw] overflow-y-auto sm:max-w-3xl sm:p-8">
                     <DialogHeader>
                         <DialogTitle>Edit Alat</DialogTitle>
                         <DialogDescription>
@@ -550,8 +694,11 @@ export default function ToolsIndex({
             </Dialog>
 
             {/* Detail Dialog */}
-            <Dialog open={!!detailTool} onOpenChange={(open) => !open && setDetailTool(null)}>
-                <DialogContent className="sm:max-w-3xl max-w-[96vw] p-0 overflow-hidden max-h-[92vh] flex flex-col">
+            <Dialog
+                open={!!detailTool}
+                onOpenChange={(open) => !open && setDetailTool(null)}
+            >
+                <DialogContent className="flex max-h-[92vh] max-w-[96vw] flex-col overflow-hidden p-0 sm:max-w-3xl">
                     {detailTool && (
                         <>
                             {/* Hero Banner */}
@@ -561,7 +708,7 @@ export default function ToolsIndex({
                                         <img
                                             src={detailTool.image_url}
                                             alt={detailTool.name}
-                                            className="w-full h-full object-cover"
+                                            className="h-full w-full object-cover"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                                     </div>
@@ -570,31 +717,40 @@ export default function ToolsIndex({
                                 )}
 
                                 {/* Overlay Header */}
-                                <div className={`absolute bottom-0 left-0 right-0 p-5 ${detailTool.image_url ? 'text-white' : ''}`}>
+                                <div
+                                    className={`absolute right-0 bottom-0 left-0 p-5 ${detailTool.image_url ? 'text-white' : ''}`}
+                                >
                                     <div className="flex items-end justify-between gap-3">
                                         <div>
-                                            <p className={`text-xs font-mono mb-1 ${detailTool.image_url ? 'text-white/70' : 'text-muted-foreground'}`}>
+                                            <p
+                                                className={`mb-1 font-mono text-xs ${detailTool.image_url ? 'text-white/70' : 'text-muted-foreground'}`}
+                                            >
                                                 {detailTool.code}
                                             </p>
-                                            <h2 className={`text-2xl font-bold leading-tight ${detailTool.image_url ? 'text-white' : 'text-foreground'}`}>
+                                            <h2
+                                                className={`text-2xl leading-tight font-bold ${detailTool.image_url ? 'text-white' : 'text-foreground'}`}
+                                            >
                                                 {detailTool.name}
                                             </h2>
                                             {detailTool.category_name && (
-                                                <p className={`text-sm mt-0.5 ${detailTool.image_url ? 'text-white/80' : 'text-muted-foreground'}`}>
+                                                <p
+                                                    className={`mt-0.5 text-sm ${detailTool.image_url ? 'text-white/80' : 'text-muted-foreground'}`}
+                                                >
                                                     {detailTool.category_name}
                                                 </p>
                                             )}
                                         </div>
                                         <Badge
                                             variant="outline"
-                                            className={`capitalize shrink-0 text-sm px-3 py-1 font-semibold ${
-                                                detailTool.condition_status === 'baik'
+                                            className={`shrink-0 px-3 py-1 text-sm font-semibold capitalize ${
+                                                detailTool.condition_status ===
+                                                'baik'
                                                     ? detailTool.image_url
-                                                        ? 'bg-emerald-500/90 text-white border-transparent'
-                                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-transparent'
+                                                        ? 'border-transparent bg-emerald-500/90 text-white'
+                                                        : 'border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
                                                     : detailTool.image_url
-                                                        ? 'bg-amber-500/90 text-white border-transparent'
-                                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-transparent'
+                                                      ? 'border-transparent bg-amber-500/90 text-white'
+                                                      : 'border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                                             }`}
                                         >
                                             {detailTool.condition_status}
@@ -604,78 +760,146 @@ export default function ToolsIndex({
                             </div>
 
                             {/* Body */}
-                            <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                            <div className="flex-1 space-y-6 overflow-y-auto p-6">
                                 {/* Stok Cards */}
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800 p-4 text-center">
-                                        <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400">{detailTool.stock_available}</p>
-                                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-1">Unit Tersedia</p>
+                                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center dark:border-emerald-800 dark:bg-emerald-900/20">
+                                        <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400">
+                                            {detailTool.stock_available}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                            Unit Tersedia
+                                        </p>
                                     </div>
                                     <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
-                                        <p className="text-4xl font-black text-foreground">{detailTool.stock_total}</p>
-                                        <p className="text-xs text-muted-foreground font-medium mt-1">Total Unit</p>
-                                    </div>
-                                    <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-800 p-4 text-center">
-                                        <p className="text-4xl font-black text-rose-600 dark:text-rose-400">
-                                            {detailTool.stock_total - detailTool.stock_available}
+                                        <p className="text-4xl font-black text-foreground">
+                                            {detailTool.stock_total}
                                         </p>
-                                        <p className="text-xs text-rose-700 dark:text-rose-400 font-medium mt-1">Sedang Dipinjam</p>
+                                        <p className="mt-1 text-xs font-medium text-muted-foreground">
+                                            Total Unit
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center dark:border-rose-800 dark:bg-rose-900/20">
+                                        <p className="text-4xl font-black text-rose-600 dark:text-rose-400">
+                                            {detailTool.stock_total -
+                                                detailTool.stock_available}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-rose-700 dark:text-rose-400">
+                                            Sedang Dipinjam
+                                        </p>
                                     </div>
                                 </div>
 
                                 <Separator />
 
-                {/* Spesifikasi */}
+                                {/* Spesifikasi */}
                                 <div>
-                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Spesifikasi</p>
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                    <p className="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                                        Spesifikasi
+                                    </p>
+                                    <div className="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
                                         <div className="flex justify-between border-b border-border/40 pb-3">
-                                            <span className="text-muted-foreground">Merek</span>
-                                            <span className="font-semibold">{detailTool.brand ?? '—'}</span>
+                                            <span className="text-muted-foreground">
+                                                Merek
+                                            </span>
+                                            <span className="font-semibold">
+                                                {detailTool.brand ?? '—'}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between border-b border-border/40 pb-3">
-                                            <span className="text-muted-foreground">Kategori</span>
-                                            <span className="font-semibold">{detailTool.category_name ?? '—'}</span>
+                                            <span className="text-muted-foreground">
+                                                Kategori
+                                            </span>
+                                            <span className="font-semibold">
+                                                {detailTool.category_name ??
+                                                    '—'}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between border-b border-border/40 pb-3">
-                                            <span className="text-muted-foreground">No. Seri</span>
-                                            <span className="font-semibold font-mono text-xs">{detailTool.serial_number ?? '—'}</span>
+                                            <span className="text-muted-foreground">
+                                                No. Seri
+                                            </span>
+                                            <span className="font-mono text-xs font-semibold">
+                                                {detailTool.serial_number ??
+                                                    '—'}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between border-b border-border/40 pb-3">
-                                            <span className="text-muted-foreground">Lokasi</span>
-                                            <span className="font-semibold">{detailTool.location ?? '—'}</span>
+                                            <span className="text-muted-foreground">
+                                                Lokasi
+                                            </span>
+                                            <span className="font-semibold">
+                                                {detailTool.location ?? '—'}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between border-b border-border/40 pb-3">
-                                            <span className="text-muted-foreground">Harga</span>
-                                            <span className="font-semibold text-emerald-600">Rp {detailTool.price?.toLocaleString('id-ID') ?? '0'}</span>
+                                            <span className="text-muted-foreground">
+                                                Harga
+                                            </span>
+                                            <span className="font-semibold text-emerald-600">
+                                                Rp{' '}
+                                                {detailTool.price?.toLocaleString(
+                                                    'id-ID',
+                                                ) ?? '0'}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Info Denda untuk Peminjam */}
                                 {isPeminjam && detailTool.price > 0 && (
-                                    <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4">
-                                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">
+                                        <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-widest text-amber-800 uppercase dark:text-amber-300">
                                             <AlertTriangle className="h-3.5 w-3.5" />
                                             Estimasi Denda
                                         </p>
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between">
-                                                <span className="text-amber-700 dark:text-amber-400">Denda Keterlambatan ({fineSettings.late_percent}%/jam)</span>
+                                                <span className="text-amber-700 dark:text-amber-400">
+                                                    Denda Keterlambatan (
+                                                    {fineSettings.late_percent}
+                                                    %/jam)
+                                                </span>
                                                 <span className="font-semibold text-amber-800 dark:text-amber-300">
-                                                    Rp {Math.round(detailTool.price * fineSettings.late_percent / 100).toLocaleString('id-ID')}/jam
+                                                    Rp{' '}
+                                                    {Math.round(
+                                                        (detailTool.price *
+                                                            fineSettings.late_percent) /
+                                                            100,
+                                                    ).toLocaleString('id-ID')}
+                                                    /jam
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-amber-700 dark:text-amber-400">Denda Kerusakan ({fineSettings.damage_percent}%)</span>
+                                                <span className="text-amber-700 dark:text-amber-400">
+                                                    Denda Kerusakan (
+                                                    {
+                                                        fineSettings.damage_percent
+                                                    }
+                                                    %)
+                                                </span>
                                                 <span className="font-semibold text-amber-800 dark:text-amber-300">
-                                                    Rp {Math.round(detailTool.price * fineSettings.damage_percent / 100).toLocaleString('id-ID')}
+                                                    Rp{' '}
+                                                    {Math.round(
+                                                        (detailTool.price *
+                                                            fineSettings.damage_percent) /
+                                                            100,
+                                                    ).toLocaleString('id-ID')}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-amber-700 dark:text-amber-400">Denda Kehilangan ({fineSettings.loss_percent}%)</span>
+                                                <span className="text-amber-700 dark:text-amber-400">
+                                                    Denda Kehilangan (
+                                                    {fineSettings.loss_percent}
+                                                    %)
+                                                </span>
                                                 <span className="font-semibold text-amber-800 dark:text-amber-300">
-                                                    Rp {Math.round(detailTool.price * fineSettings.loss_percent / 100).toLocaleString('id-ID')}
+                                                    Rp{' '}
+                                                    {Math.round(
+                                                        (detailTool.price *
+                                                            fineSettings.loss_percent) /
+                                                            100,
+                                                    ).toLocaleString('id-ID')}
                                                 </span>
                                             </div>
                                         </div>
@@ -684,30 +908,37 @@ export default function ToolsIndex({
 
                                 {detailTool.description && (
                                     <div>
-                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Deskripsi</p>
-                                        <p className="text-sm text-muted-foreground leading-relaxed bg-muted/30 rounded-xl p-4 border border-border/50">
+                                        <p className="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                                            Deskripsi
+                                        </p>
+                                        <p className="rounded-xl border border-border/50 bg-muted/30 p-4 text-sm leading-relaxed text-muted-foreground">
                                             {detailTool.description}
                                         </p>
                                     </div>
                                 )}
 
                                 {/* Tombol Pinjam untuk Peminjam */}
-                                {isPeminjam && detailTool.stock_available > 0 && (
-                                    <div className="pt-2">
-                                        <Button
-                                            className="w-full gap-2"
-                                            onClick={() => openLoanForm(detailTool)}
-                                        >
-                                            <Send className="h-4 w-4" />
-                                            Ajukan Peminjaman Alat Ini
-                                        </Button>
-                                    </div>
-                                )}
-                                {isPeminjam && detailTool.stock_available === 0 && (
-                                    <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-900/20 p-3 text-center text-sm text-rose-700 dark:text-rose-400">
-                                        Stok habis — tidak tersedia untuk dipinjam saat ini.
-                                    </div>
-                                )}
+                                {isPeminjam &&
+                                    detailTool.stock_available > 0 && (
+                                        <div className="pt-2">
+                                            <Button
+                                                className="w-full gap-2"
+                                                onClick={() =>
+                                                    openLoanForm(detailTool)
+                                                }
+                                            >
+                                                <Send className="h-4 w-4" />
+                                                Ajukan Peminjaman Alat Ini
+                                            </Button>
+                                        </div>
+                                    )}
+                                {isPeminjam &&
+                                    detailTool.stock_available === 0 && (
+                                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-sm text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">
+                                            Stok habis — tidak tersedia untuk
+                                            dipinjam saat ini.
+                                        </div>
+                                    )}
                             </div>
                         </>
                     )}
@@ -715,15 +946,22 @@ export default function ToolsIndex({
             </Dialog>
 
             {/* ── Dialog Form Pengajuan Pinjam ── */}
-            <Dialog open={!!pinjamTool} onOpenChange={(open) => { if (!open) setPinjamTool(null); }}>
-                <DialogContent className="sm:max-w-2xl max-w-[95vw] max-h-[92vh] overflow-y-auto">
+            <Dialog
+                open={!!pinjamTool}
+                onOpenChange={(open) => {
+                    if (!open) setPinjamTool(null);
+                }}
+            >
+                <DialogContent className="max-h-[92vh] max-w-[95vw] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Send className="h-5 w-5 text-primary" />
                             Ajukan Peminjaman
                         </DialogTitle>
                         <DialogDescription>
-                            {pinjamTool ? `${pinjamTool.name} (${pinjamTool.code}) — Stok tersedia: ${pinjamTool.stock_available}` : ''}
+                            {pinjamTool
+                                ? `${pinjamTool.name} (${pinjamTool.code}) — Stok tersedia: ${pinjamTool.stock_available}`
+                                : ''}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -731,26 +969,50 @@ export default function ToolsIndex({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label>Nama Peminjam</Label>
-                                <Input value={loanForm.data.borrower_name} disabled readOnly />
+                                <Input
+                                    value={loanForm.data.borrower_name}
+                                    disabled
+                                    readOnly
+                                />
                             </div>
                             <div className="grid gap-2">
                                 <Label>Identitas (NIS/NIP)</Label>
-                                <Input value={loanForm.data.borrower_identifier} disabled readOnly />
+                                <Input
+                                    value={loanForm.data.borrower_identifier}
+                                    disabled
+                                    readOnly
+                                />
                             </div>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label>No. Telepon</Label>
-                                <Input value={loanForm.data.borrower_phone} disabled readOnly />
+                                <Input
+                                    value={loanForm.data.borrower_phone}
+                                    disabled
+                                    readOnly
+                                />
                             </div>
                             <div className="grid gap-2">
-                                <Label>Keperluan <span className="text-rose-500">*</span></Label>
+                                <Label>
+                                    Keperluan{' '}
+                                    <span className="text-rose-500">*</span>
+                                </Label>
                                 <Input
                                     value={loanForm.data.purpose}
-                                    onChange={(e) => loanForm.setData('purpose', e.target.value)}
+                                    onChange={(e) =>
+                                        loanForm.setData(
+                                            'purpose',
+                                            e.target.value,
+                                        )
+                                    }
                                     placeholder="Misal: Praktikum Jaringan..."
-                                    className={loanForm.errors.purpose ? 'border-rose-500' : ''}
+                                    className={
+                                        loanForm.errors.purpose
+                                            ? 'border-rose-500'
+                                            : ''
+                                    }
                                 />
                             </div>
                         </div>
@@ -758,52 +1020,144 @@ export default function ToolsIndex({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label>Waktu Pinjam</Label>
-                                <Input type="datetime-local" value={loanForm.data.loan_date} onChange={(e) => loanForm.setData('loan_date', e.target.value)} />
+                                <Input
+                                    type="datetime-local"
+                                    value={loanForm.data.loan_date}
+                                    onChange={(e) =>
+                                        loanForm.setData(
+                                            'loan_date',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
                             </div>
                             <div className="grid gap-2">
                                 <Label>Batas Pengembalian</Label>
-                                <Input type="datetime-local" value={loanForm.data.return_due_date} onChange={(e) => loanForm.setData('return_due_date', e.target.value)} />
+                                <Input
+                                    type="datetime-local"
+                                    value={loanForm.data.return_due_date}
+                                    onChange={(e) =>
+                                        loanForm.setData(
+                                            'return_due_date',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
                             </div>
                         </div>
 
                         {/* Item — alat sudah terisi otomatis */}
-                        <div className="space-y-3 pt-4 border-t">
+                        <div className="space-y-3 border-t pt-4">
                             <div className="flex items-center justify-between">
                                 <Label>Alat yang Dipinjam</Label>
-                                <Button type="button" variant="outline" size="sm"
-                                    onClick={() => loanForm.setData('items', [...loanForm.data.items, { tool_id: '', quantity: 1, condition_out: 'baik' }])}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        loanForm.setData('items', [
+                                            ...loanForm.data.items,
+                                            {
+                                                tool_id: '',
+                                                quantity: 1,
+                                                condition_out: 'baik',
+                                            },
+                                        ])
+                                    }
                                 >
-                                    <Plus className="h-4 w-4 mr-1" /> Tambah Alat Lain
+                                    <Plus className="mr-1 h-4 w-4" /> Tambah
+                                    Alat Lain
                                 </Button>
                             </div>
                             {loanForm.data.items.map((item, idx) => (
-                                <div key={idx} className="relative rounded-xl border border-border p-4 bg-muted/20">
+                                <div
+                                    key={idx}
+                                    className="relative rounded-xl border border-border bg-muted/20 p-4"
+                                >
                                     {loanForm.data.items.length > 1 && (
-                                        <button type="button" className="absolute right-2 top-2 text-muted-foreground hover:text-rose-500"
-                                            onClick={() => loanForm.setData('items', loanForm.data.items.filter((_, i) => i !== idx))}
-                                        ><X className="h-4 w-4" /></button>
+                                        <button
+                                            type="button"
+                                            className="absolute top-2 right-2 text-muted-foreground hover:text-rose-500"
+                                            onClick={() =>
+                                                loanForm.setData(
+                                                    'items',
+                                                    loanForm.data.items.filter(
+                                                        (_, i) => i !== idx,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
                                     )}
-                                    <div className="grid gap-4 md:grid-cols-[1.6fr_0.7fr] mt-1">
+                                    <div className="mt-1 grid gap-4 md:grid-cols-[1.6fr_0.7fr]">
                                         <div className="grid gap-2">
-                                            <Label className="text-xs text-muted-foreground">Pilih Alat</Label>
+                                            <Label className="text-xs text-muted-foreground">
+                                                Pilih Alat
+                                            </Label>
                                             <Select
                                                 value={item.tool_id}
-                                                onValueChange={(v) => loanForm.setData('items', loanForm.data.items.map((cur, i) => i === idx ? { ...cur, tool_id: v } : cur))}
+                                                onValueChange={(v) =>
+                                                    loanForm.setData(
+                                                        'items',
+                                                        loanForm.data.items.map(
+                                                            (cur, i) =>
+                                                                i === idx
+                                                                    ? {
+                                                                          ...cur,
+                                                                          tool_id:
+                                                                              v,
+                                                                      }
+                                                                    : cur,
+                                                        ),
+                                                    )
+                                                }
                                             >
-                                                <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Pilih alat..." /></SelectTrigger>
+                                                <SelectTrigger className="w-full bg-background">
+                                                    <SelectValue placeholder="Pilih alat..." />
+                                                </SelectTrigger>
                                                 <SelectContent>
                                                     {tools.data.map((t) => (
-                                                        <SelectItem key={t.id} value={String(t.id)}>
-                                                            {t.name} ({t.code}) — Stok: {t.stock_available}
+                                                        <SelectItem
+                                                            key={t.id}
+                                                            value={String(t.id)}
+                                                        >
+                                                            {t.name} ({t.code})
+                                                            — Stok:{' '}
+                                                            {t.stock_available}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                         <div className="grid gap-2">
-                                            <Label className="text-xs text-muted-foreground">Jumlah</Label>
-                                            <Input type="number" min={1} value={item.quantity} className="bg-background"
-                                                onChange={(e) => loanForm.setData('items', loanForm.data.items.map((cur, i) => i === idx ? { ...cur, quantity: Number(e.target.value) } : cur))}
+                                            <Label className="text-xs text-muted-foreground">
+                                                Jumlah
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                value={item.quantity}
+                                                className="bg-background"
+                                                onChange={(e) =>
+                                                    loanForm.setData(
+                                                        'items',
+                                                        loanForm.data.items.map(
+                                                            (cur, i) =>
+                                                                i === idx
+                                                                    ? {
+                                                                          ...cur,
+                                                                          quantity:
+                                                                              Number(
+                                                                                  e
+                                                                                      .target
+                                                                                      .value,
+                                                                              ),
+                                                                      }
+                                                                    : cur,
+                                                        ),
+                                                    )
+                                                }
                                             />
                                         </div>
                                     </div>
@@ -813,14 +1167,37 @@ export default function ToolsIndex({
 
                         <div className="grid gap-2">
                             <Label>Catatan (opsional)</Label>
-                            <textarea className={textareaClass} rows={2} value={loanForm.data.notes} onChange={(e) => loanForm.setData('notes', e.target.value)} />
+                            <textarea
+                                className={textareaClass}
+                                rows={2}
+                                value={loanForm.data.notes}
+                                onChange={(e) =>
+                                    loanForm.setData('notes', e.target.value)
+                                }
+                            />
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-4 border-t">
-                            <Button type="button" variant="outline" onClick={() => setPinjamTool(null)}>Batal</Button>
-                            <Button type="submit" disabled={loanForm.processing} className="gap-2">
-                                {loanForm.processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                {loanForm.processing ? 'Mengirim...' : 'Kirim Pengajuan'}
+                        <div className="flex justify-end gap-2 border-t pt-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setPinjamTool(null)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={loanForm.processing}
+                                className="gap-2"
+                            >
+                                {loanForm.processing ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Send className="h-4 w-4" />
+                                )}
+                                {loanForm.processing
+                                    ? 'Mengirim...'
+                                    : 'Kirim Pengajuan'}
                             </Button>
                         </div>
                     </form>
@@ -828,28 +1205,40 @@ export default function ToolsIndex({
             </Dialog>
 
             {/* ===== Dialog Import Excel ===== */}
-            <Dialog open={isImportOpen} onOpenChange={(open) => { setIsImportOpen(open); if (!open) setImportFile(null); }}>
-                <DialogContent className="sm:max-w-md max-w-[95vw]">
+            <Dialog
+                open={isImportOpen}
+                onOpenChange={(open) => {
+                    setIsImportOpen(open);
+                    if (!open) setImportFile(null);
+                }}
+            >
+                <DialogContent className="max-w-[95vw] sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
                             Import Data Alat dari Excel
                         </DialogTitle>
                         <DialogDescription>
-                            Upload file .xlsx/.xls berisi data alat. Alat dengan kode yang sama akan diperbarui otomatis.
+                            Upload file .xlsx/.xls berisi data alat. Alat dengan
+                            kode yang sama akan diperbarui otomatis.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
                         {/* Download Template */}
-                        <div className="rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-500/10 dark:border-sky-500/30 p-3 flex items-start gap-3">
-                            <Download className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                        <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-500/30 dark:bg-sky-500/10">
+                            <Download className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
                             <div className="flex-1">
-                                <p className="text-sm font-medium text-sky-800 dark:text-sky-300">Belum punya template?</p>
-                                <p className="text-xs text-sky-700 dark:text-sky-400 mt-0.5 mb-2">Download template Excel berikut agar format kolom sesuai.</p>
+                                <p className="text-sm font-medium text-sky-800 dark:text-sky-300">
+                                    Belum punya template?
+                                </p>
+                                <p className="mt-0.5 mb-2 text-xs text-sky-700 dark:text-sky-400">
+                                    Download template Excel berikut agar format
+                                    kolom sesuai.
+                                </p>
                                 <a
                                     href="/tools/import/template"
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300 underline underline-offset-2 hover:text-sky-900"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-300"
                                     target="_blank"
                                 >
                                     <Download className="h-3.5 w-3.5" />
@@ -860,22 +1249,30 @@ export default function ToolsIndex({
 
                         {/* Upload File */}
                         <div className="grid gap-2">
-                            <Label htmlFor="import-file">Pilih File Excel</Label>
+                            <Label htmlFor="import-file">
+                                Pilih File Excel
+                            </Label>
                             <Input
                                 id="import-file"
                                 type="file"
                                 accept=".xlsx,.xls,.csv"
-                                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                                onChange={(e) =>
+                                    setImportFile(e.target.files?.[0] ?? null)
+                                }
                                 className="cursor-pointer"
                             />
-                            <p className="text-xs text-muted-foreground">Format: .xlsx, .xls, .csv — Maks 5 MB</p>
+                            <p className="text-xs text-muted-foreground">
+                                Format: .xlsx, .xls, .csv — Maks 5 MB
+                            </p>
                         </div>
 
                         {importFile && (
-                            <div className="rounded-lg bg-muted/40 border px-3 py-2 text-sm flex items-center gap-2">
-                                <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
-                                <span className="truncate font-medium">{importFile.name}</span>
-                                <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+                                <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600" />
+                                <span className="truncate font-medium">
+                                    {importFile.name}
+                                </span>
+                                <span className="ml-auto text-xs whitespace-nowrap text-muted-foreground">
                                     {(importFile.size / 1024).toFixed(1)} KB
                                 </span>
                             </div>
@@ -883,11 +1280,18 @@ export default function ToolsIndex({
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="outline" onClick={() => { setIsImportOpen(false); setImportFile(null); }} disabled={importing}>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsImportOpen(false);
+                                setImportFile(null);
+                            }}
+                            disabled={importing}
+                        >
                             Batal
                         </Button>
                         <Button
-                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
                             disabled={!importFile || importing}
                             onClick={() => {
                                 if (!importFile) return;
@@ -902,12 +1306,21 @@ export default function ToolsIndex({
                                         setImportFile(null);
                                         toast.success('Import berhasil!');
                                     },
-                                    onError: (errs) => toast.error(Object.values(errs)[0] as string ?? 'Import gagal.'),
+                                    onError: (errs) =>
+                                        toast.error(
+                                            (Object.values(
+                                                errs,
+                                            )[0] as string) ?? 'Import gagal.',
+                                        ),
                                     onFinish: () => setImporting(false),
                                 });
                             }}
                         >
-                            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {importing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Upload className="h-4 w-4" />
+                            )}
                             {importing ? 'Mengimport...' : 'Import Sekarang'}
                         </Button>
                     </div>
@@ -924,20 +1337,22 @@ function ToolForm({
     onSubmit,
     onCancel,
 }: {
-    form: ReturnType<typeof useForm<{
-        category_id: string;
-        code: string;
-        name: string;
-        brand: string;
-        serial_number: string;
-        condition_status: string;
-        location: string;
-        stock_total: number;
-        stock_available: number;
-        description: string;
-        price: number;
-        image: File | null;
-    }>>;
+    form: ReturnType<
+        typeof useForm<{
+            category_id: string;
+            code: string;
+            name: string;
+            brand: string;
+            serial_number: string;
+            condition_status: string;
+            location: string;
+            stock_total: number;
+            stock_available: number;
+            description: string;
+            price: number;
+            image: File | null;
+        }>
+    >;
     categories: CategoryOption[];
     submitLabel: string;
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -950,9 +1365,13 @@ function ToolForm({
                     <Label>Kategori</Label>
                     <Select
                         value={form.data.category_id}
-                        onValueChange={(value) => form.setData('category_id', value)}
+                        onValueChange={(value) =>
+                            form.setData('category_id', value)
+                        }
                     >
-                        <SelectTrigger className={`w-full ${form.errors.category_id ? 'border-red-500' : ''}`}>
+                        <SelectTrigger
+                            className={`w-full ${form.errors.category_id ? 'border-red-500' : ''}`}
+                        >
                             <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                         <SelectContent>
@@ -974,7 +1393,9 @@ function ToolForm({
                         value={form.data.code}
                         placeholder="Kosongkan untuk otomatis (Auto)"
                         className={form.errors.code ? 'border-red-500' : ''}
-                        onChange={(event) => form.setData('code', event.target.value)}
+                        onChange={(event) =>
+                            form.setData('code', event.target.value)
+                        }
                     />
                 </div>
             </div>
@@ -985,7 +1406,9 @@ function ToolForm({
                     <Input
                         value={form.data.name}
                         className={form.errors.name ? 'border-red-500' : ''}
-                        onChange={(event) => form.setData('name', event.target.value)}
+                        onChange={(event) =>
+                            form.setData('name', event.target.value)
+                        }
                     />
                 </div>
 
@@ -993,7 +1416,9 @@ function ToolForm({
                     <Label>Merek</Label>
                     <Input
                         value={form.data.brand}
-                        onChange={(event) => form.setData('brand', event.target.value)}
+                        onChange={(event) =>
+                            form.setData('brand', event.target.value)
+                        }
                     />
                 </div>
             </div>
@@ -1022,7 +1447,10 @@ function ToolForm({
                         </SelectTrigger>
                         <SelectContent>
                             {conditionOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                >
                                     {option.label}
                                 </SelectItem>
                             ))}
@@ -1031,7 +1459,7 @@ function ToolForm({
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <div className="grid gap-2">
                     <Label>Lokasi</Label>
                     <Input
@@ -1047,9 +1475,14 @@ function ToolForm({
                         type="number"
                         min={0}
                         value={form.data.stock_total}
-                        className={form.errors.stock_total ? 'border-red-500' : ''}
+                        className={
+                            form.errors.stock_total ? 'border-red-500' : ''
+                        }
                         onChange={(event) =>
-                            form.setData('stock_total', Number(event.target.value))
+                            form.setData(
+                                'stock_total',
+                                Number(event.target.value),
+                            )
                         }
                     />
                 </div>
@@ -1059,7 +1492,9 @@ function ToolForm({
                         type="number"
                         min={0}
                         value={form.data.stock_available}
-                        className={form.errors.stock_available ? 'border-red-500' : ''}
+                        className={
+                            form.errors.stock_available ? 'border-red-500' : ''
+                        }
                         onChange={(event) =>
                             form.setData(
                                 'stock_available',
@@ -1100,12 +1535,15 @@ function ToolForm({
                     type="file"
                     accept="image/*"
                     onChange={(e) =>
-                        form.setData('image', e.target.files ? e.target.files[0] : null)
+                        form.setData(
+                            'image',
+                            e.target.files ? e.target.files[0] : null,
+                        )
                     }
                 />
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
+            <div className="flex justify-end gap-2 border-t pt-4">
                 {onCancel && (
                     <Button type="button" variant="outline" onClick={onCancel}>
                         Batal

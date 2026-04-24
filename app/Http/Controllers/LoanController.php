@@ -52,6 +52,7 @@ class LoanController extends Controller
                 'notes'               => $loan->notes,
                 'requested_by'        => $loan->user?->name,
                 // Data denda dari record pengembalian
+                'return_id'           => $loan->toolReturn?->id,
                 'fine'                => $loan->toolReturn ? (int) $loan->toolReturn->fine : null,
                 'damage_fine'         => $loan->toolReturn ? (int) $loan->toolReturn->damage_fine : null,
                 'total_fine'          => $loan->toolReturn ? (int) $loan->toolReturn->fine + (int) $loan->toolReturn->damage_fine : null,

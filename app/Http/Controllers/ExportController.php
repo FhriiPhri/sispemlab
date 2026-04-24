@@ -29,21 +29,21 @@ class ExportController extends Controller
         if ($needsDate) {
             $request->validate([
                 'start_date' => 'required|date',
-                'end_date'   => 'required|date|after_or_equal:start_date',
+                'end_date' => 'required|date|after_or_equal:start_date',
             ]);
         }
 
-        $start = ($request->start_date ?? now()->startOfMonth()->toDateString()) . ' 00:00:00';
-        $end   = ($request->end_date   ?? now()->endOfMonth()->toDateString())   . ' 23:59:59';
+        $start = ($request->start_date ?? now()->startOfMonth()->toDateString()).' 00:00:00';
+        $end = ($request->end_date ?? now()->endOfMonth()->toDateString()).' 23:59:59';
 
         [$export, $filename] = match ($type) {
-            'peminjaman'   => [$this->single(new LoansSheet($start, $end)),   'laporan_peminjaman.xlsx'],
-            'pengembalian' => [$this->single(new ReturnsSheet($start, $end)),  'laporan_pengembalian.xlsx'],
-            'semua'        => [new AllDataExport($start, $end),                'laporan_semua_data.xlsx'],
-            'user'         => [$this->single(new UsersSheet()),                'data_user.xlsx'],
-            'kategori'     => [$this->single(new CategoriesSheet()),           'data_kategori.xlsx'],
-            'alat'         => [$this->single(new ToolsSheet()),                'data_alat.xlsx'],
-            'log'          => [$this->single(new ActivityLogsSheet()),         'log_aktivitas.xlsx'],
+            'peminjaman' => [$this->single(new LoansSheet($start, $end)),   'Laporan Peminjaman.xlsx'],
+            'pengembalian' => [$this->single(new ReturnsSheet($start, $end)),  'Laporan Pengembalian.xlsx'],
+            'semua' => [new AllDataExport($start, $end),                'Laporan Semua Data.xlsx'],
+            'user' => [$this->single(new UsersSheet),                'Data User.xlsx'],
+            'kategori' => [$this->single(new CategoriesSheet),           'Data Kategori.xlsx'],
+            'alat' => [$this->single(new ToolsSheet),                'Data Alat.xlsx'],
+            'log' => [$this->single(new ActivityLogsSheet),         'Log Aktivitas.xlsx'],
         };
 
         return Excel::download($export, $filename);
@@ -54,9 +54,14 @@ class ExportController extends Controller
      */
     private function single($sheet): WithMultipleSheets
     {
-        return new class($sheet) implements WithMultipleSheets {
+        return new class($sheet) implements WithMultipleSheets
+        {
             public function __construct(private $sheet) {}
-            public function sheets(): array { return [$this->sheet]; }
+
+            public function sheets(): array
+            {
+                return [$this->sheet];
+            }
         };
     }
 }

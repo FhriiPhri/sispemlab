@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
-import { Layers3, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, FileSpreadsheet, Layers3, Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,28 @@ const textareaClass =
 export default function CategoriesIndex({ categories, stats }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+    const [isImportOpen, setIsImportOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importing, setImporting] = useState(false);
+
+    const handleImport = () => {
+        if (!importFile) return;
+        setImporting(true);
+        const fd = new FormData();
+        fd.append('file', importFile);
+        router.post('/categories/import', fd, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsImportOpen(false);
+                setImportFile(null);
+                toast.success('Import kategori berhasil!');
+            },
+            onError: (errs) =>
+                toast.error((Object.values(errs)[0] as string) ?? 'Import gagal.'),
+            onFinish: () => setImporting(false),
+        });
+    };
 
     const createForm = useForm({
         name: '',
@@ -111,6 +134,18 @@ export default function CategoriesIndex({ categories, stats }: Props) {
                     description="Kelola kelompok alat agar inventaris lebih terstruktur."
                 />
 
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Import Button */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 border-violet-400 text-violet-700 hover:bg-violet-50 dark:border-violet-600 dark:text-violet-400 dark:hover:bg-violet-900/20"
+                        onClick={() => setIsImportOpen(true)}
+                    >
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Import Excel
+                    </Button>
+
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogTrigger asChild>
                         <Button>
@@ -161,7 +196,82 @@ export default function CategoriesIndex({ categories, stats }: Props) {
                         </form>
                     </DialogContent>
                 </Dialog>
+                </div>
             </div>
+
+            {/* ── Import Dialog ── */}
+            <Dialog open={isImportOpen} onOpenChange={(open) => { setIsImportOpen(open); if (!open) setImportFile(null); }}>
+                <DialogContent className="max-w-[95vw] sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileSpreadsheet className="h-5 w-5 text-violet-600" />
+                            Import Data Kategori dari Excel
+                        </DialogTitle>
+                        <DialogDescription>
+                            Upload file .xlsx/.xls berisi data kategori. Kategori yang sudah ada akan diperbarui.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-500/30 dark:bg-sky-500/10">
+                            <Download className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-sky-800 dark:text-sky-300">Belum punya template?</p>
+                                <p className="mt-0.5 mb-2 text-xs text-sky-700 dark:text-sky-400">
+                                    Download template Excel agar format kolom sesuai.
+                                </p>
+                                <a
+                                    href="/categories/import/template"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-300"
+                                    target="_blank"
+                                >
+                                    <Download className="h-3.5 w-3.5" /> Download Template
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                            <strong>Kolom wajib:</strong> nama_kategori &nbsp;|&nbsp; <strong>Opsional:</strong> deskripsi
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="cat-import-file">Pilih File Excel</Label>
+                            <input
+                                id="cat-import-file"
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                                className="flex h-10 w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
+                            />
+                            <p className="text-xs text-muted-foreground">Format: .xlsx, .xls, .csv — Maks 5 MB</p>
+                        </div>
+
+                        {importFile && (
+                            <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+                                <FileSpreadsheet className="h-4 w-4 shrink-0 text-violet-600" />
+                                <span className="truncate font-medium">{importFile.name}</span>
+                                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">
+                                    {(importFile.size / 1024).toFixed(1)} KB
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => { setIsImportOpen(false); setImportFile(null); }} disabled={importing}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="gap-2 bg-violet-600 text-white hover:bg-violet-700"
+                            disabled={!importFile || importing}
+                            onClick={handleImport}
+                        >
+                            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {importing ? 'Mengimport...' : 'Import Sekarang'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>

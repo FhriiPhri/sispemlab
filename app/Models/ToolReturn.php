@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['loan_id', 'processed_by_id', 'return_date', 'fine', 'damage_fine', 'condition_note', 'payment_status'])]
+#[Fillable(['loan_id', 'processed_by_id', 'return_date', 'fine', 'damage_fine', 'condition_note', 'payment_status', 'midtrans_order_id', 'midtrans_transaction_id', 'midtrans_payment_type'])]
 class ToolReturn extends Model
 {
     protected $table = 'returns';

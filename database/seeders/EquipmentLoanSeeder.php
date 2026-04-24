@@ -21,9 +21,9 @@ class EquipmentLoanSeeder extends Seeder
     {
         // 1. Seed Users (With Identifier and Phone)
         $admin = User::query()->updateOrCreate(
-            ['email' => 'admin@smktarunabhakti.sch.id'],
+            ['email' => 'admin@gmail.com'],
             [
-                'name' => 'Pak Budi (Koordinator Sarpras)',
+                'name' => 'Etmin',
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'identifier' => '197508122005011001', // NIP
@@ -33,9 +33,9 @@ class EquipmentLoanSeeder extends Seeder
         );
 
         $petugas = User::query()->updateOrCreate(
-            ['email' => 'petugas@smktarunabhakti.sch.id'],
+            ['email' => 'petugas@gmail.com'],
             [
-                'name' => 'Siti Aminah (Staf Lab)',
+                'name' => 'Ibu Romlah',
                 'password' => Hash::make('password'),
                 'role' => 'petugas',
                 'identifier' => '199001012020122002', // NIP
@@ -45,13 +45,25 @@ class EquipmentLoanSeeder extends Seeder
         );
 
         $peminjam = User::query()->updateOrCreate(
-            ['email' => 'peminjam@smktarunabhakti.sch.id'],
+            ['email' => 'peminjam@gmail.com'],
             [
-                'name' => 'Rian Hidayat (Siswa TKJ)',
+                'name' => 'Iwan Irawan',
                 'password' => Hash::make('password'),
                 'role' => 'peminjam',
                 'identifier' => '222310155', // NIS
-                'phone' => '08987654321',
+                'phone' => '08123456789',
+                'email_verified_at' => now(),
+            ],
+        );
+
+        $peminjam = User::query()->updateOrCreate(
+            ['email' => 'fahripadang050908@gmail.com'],
+            [
+                'name' => 'Muhammad Fahri Ramadhan',
+                'password' => Hash::make('password'),
+                'role' => 'peminjam',
+                'identifier' => '222310154', // NIS
+                'phone' => '081210672183',
                 'email_verified_at' => now(),
             ],
         );
@@ -71,62 +83,98 @@ class EquipmentLoanSeeder extends Seeder
             return [$record->slug => $record];
         });
 
-        // 3. Seed Tools (SMK Specific)
+        // 3. Seed Tools (SMK Specific) — with images from Unsplash
+        // Image URL: pakai source.unsplash.com agar bisa didownload langsung
         $baseTools = [
             [
                 'category' => 'lab-rpl',
                 'prefix' => 'LP-RPL',
-                'names'  => ['Laptop ASUS ROG', 'Macbook Pro', 'Pen Tablet Wacom', 'Monitor Dell 24"'],
-                'brands' => ['ASUS', 'Apple', 'Wacom', 'Dell'],
-                'prices' => [14500000, 28000000, 3500000, 3200000],
+                'items' => [
+                    ['name' => 'Laptop ASUS ROG',   'brand' => 'ASUS',  'price' => 14500000, 'img_query' => 'asus+rog+laptop'],
+                    ['name' => 'Macbook Pro',        'brand' => 'Apple', 'price' => 28000000, 'img_query' => 'macbook+pro'],
+                    ['name' => 'Pen Tablet Wacom',   'brand' => 'Wacom', 'price' => 3500000,  'img_query' => 'wacom+drawing+tablet'],
+                    ['name' => 'Monitor Dell 24"',   'brand' => 'Dell',  'price' => 3200000,  'img_query' => 'dell+monitor'],
+                ],
                 'location' => 'Ruang Lab RPL 1',
             ],
             [
                 'category' => 'lab-tkj',
                 'prefix' => 'NW-TKJ',
-                'names'  => ['Router Mikrotik RB951', 'Switch Cisco 24 Port', 'Crimping Tool Proskit', 'LAN Tester Digital'],
-                'brands' => ['Mikrotik', 'Cisco', 'Proskit', 'Fluke'],
-                'prices' => [850000, 4500000, 175000, 320000],
+                'items' => [
+                    ['name' => 'Router Mikrotik RB951', 'brand' => 'Mikrotik', 'price' => 850000,  'img_query' => 'mikrotik+router'],
+                    ['name' => 'Switch Cisco 24 Port',  'brand' => 'Cisco',    'price' => 4500000, 'img_query' => 'cisco+network+switch'],
+                    ['name' => 'Crimping Tool Proskit', 'brand' => 'Proskit',  'price' => 175000,  'img_query' => 'crimping+tool+network'],
+                    ['name' => 'LAN Tester Digital',    'brand' => 'Fluke',    'price' => 320000,  'img_query' => 'lan+cable+tester'],
+                ],
                 'location' => 'Bengkel TKJ (Lantai 2)',
             ],
             [
                 'category' => 'lab-multimedia-dkv',
                 'prefix' => 'CAM-MM',
-                'names'  => ['Kamera Canon EOS 80D', 'Sony Alpha A6400', 'Lensa Fix 50mm', 'Gimbal DJI Ronin'],
-                'brands' => ['Canon', 'Sony', 'DJI'],
-                'prices' => [12500000, 11000000, 2800000, 8500000],
+                'items' => [
+                    ['name' => 'Kamera Canon EOS 80D', 'brand' => 'Canon', 'price' => 12500000, 'img_query' => 'canon+dslr+camera'],
+                    ['name' => 'Sony Alpha A6400',      'brand' => 'Sony',  'price' => 11000000, 'img_query' => 'sony+mirrorless+camera'],
+                    ['name' => 'Lensa Fix 50mm',        'brand' => 'DJI',   'price' => 2800000,  'img_query' => 'camera+lens+50mm'],
+                    ['name' => 'Gimbal DJI Ronin',      'brand' => 'DJI',   'price' => 8500000,  'img_query' => 'dji+gimbal+ronin'],
+                ],
                 'location' => 'Studio DKV',
             ],
             [
                 'category' => 'lab-broadcasting',
                 'prefix' => 'BC-ST',
-                'names'  => ['Kamera Studio Panasonic', 'Tripod Libec', 'Mixer Audio Yamaha', 'Wireless Mic Saramonic'],
-                'brands' => ['Panasonic', 'Libec', 'Yamaha', 'Saramonic'],
-                'prices' => [25000000, 3200000, 4750000, 1850000],
+                'items' => [
+                    ['name' => 'Kamera Studio Panasonic', 'brand' => 'Panasonic', 'price' => 25000000, 'img_query' => 'studio+video+camera'],
+                    ['name' => 'Tripod Libec',             'brand' => 'Libec',    'price' => 3200000,  'img_query' => 'camera+tripod'],
+                    ['name' => 'Mixer Audio Yamaha',       'brand' => 'Yamaha',   'price' => 4750000,  'img_query' => 'yamaha+audio+mixer'],
+                    ['name' => 'Wireless Mic Saramonic',   'brand' => 'Saramonic', 'price' => 1850000,  'img_query' => 'wireless+microphone'],
+                ],
                 'location' => 'Studio Broadcasting',
             ],
         ];
+
+        // Pastikan folder storage ada
+        $storagePath = storage_path('app/public/tools');
+        if (! is_dir($storagePath)) {
+            mkdir($storagePath, 0755, true);
+        }
 
         $generatedTools = collect();
         $counter = 1;
 
         foreach ($baseTools as $base) {
-            foreach ($base['names'] as $idx => $name) {
-                $brand = $base['brands'][$idx] ?? $base['brands'][0];
-                $code = $base['prefix'] . '-' . str_pad($counter, 3, '0', STR_PAD_LEFT);
+            foreach ($base['items'] as $item) {
+                $code = $base['prefix'].'-'.str_pad($counter, 3, '0', STR_PAD_LEFT);
+
+                // Download gambar dari loremflickr.com (masih aktif, free, no API key)
+                $imgFilename = null;
+                try {
+                    $imgUrl = 'https://loremflickr.com/400/300/'.urlencode(str_replace('+', ',', $item['img_query']));
+                    $imgData = @file_get_contents($imgUrl, false, stream_context_create([
+                        'http' => ['timeout' => 15, 'follow_location' => true],
+                        'ssl' => ['verify_peer' => false],
+                    ]));
+
+                    if ($imgData !== false && strlen($imgData) > 1000) {
+                        $imgFilename = 'tools/'.$code.'.jpg';
+                        file_put_contents(storage_path('app/public/'.$imgFilename), $imgData);
+                    }
+                } catch (\Exception $e) {
+                    // Gagal download → lanjut tanpa gambar
+                }
 
                 $generatedTools->push([
-                    'category'         => $base['category'],
-                    'code'             => $code,
-                    'name'             => $name,
-                    'brand'            => $brand,
-                    'price'            => $base['prices'][$idx] ?? 0,
-                    'serial_number'    => strtoupper(Str::random(10)),
+                    'category' => $base['category'],
+                    'code' => $code,
+                    'name' => $item['name'],
+                    'brand' => $item['brand'],
+                    'price' => $item['price'],
+                    'image' => $imgFilename,
+                    'serial_number' => strtoupper(Str::random(10)),
                     'condition_status' => collect(['baik', 'rusak-ringan'])->random(),
-                    'location'         => $base['location'],
-                    'stock_total'      => rand(5, 15),
-                    'stock_available'  => rand(2, 5),
-                    'description'      => "Inventaris resmi {$base['category']} SMK Taruna Bhakti.",
+                    'location' => $base['location'],
+                    'stock_total' => rand(5, 15),
+                    'stock_available' => rand(2, 5),
+                    'description' => "Inventaris resmi {$base['category']} SMK Taruna Bhakti.",
                 ]);
                 $counter++;
             }
@@ -136,55 +184,57 @@ class EquipmentLoanSeeder extends Seeder
             $record = Tool::query()->updateOrCreate(
                 ['code' => $tool['code']],
                 [
-                    'category_id'      => $categories[$tool['category']]->id,
-                    'name'             => $tool['name'],
-                    'brand'            => $tool['brand'],
-                    'price'            => $tool['price'],
-                    'serial_number'    => $tool['serial_number'],
+                    'category_id' => $categories[$tool['category']]->id,
+                    'name' => $tool['name'],
+                    'brand' => $tool['brand'],
+                    'price' => $tool['price'],
+                    'image' => $tool['image'],
+                    'serial_number' => $tool['serial_number'],
                     'condition_status' => $tool['condition_status'],
-                    'location'         => $tool['location'],
-                    'stock_total'      => $tool['stock_total'],
-                    'stock_available'  => $tool['stock_available'],
-                    'description'      => $tool['description'],
+                    'location' => $tool['location'],
+                    'stock_total' => $tool['stock_total'],
+                    'stock_available' => $tool['stock_available'],
+                    'description' => $tool['description'],
                 ],
             );
 
             return [$record->code => $record];
         });
 
-// 4. Seed Loans (Disesuaikan dengan real-time 23 April 2026)
-$loans = [
-    [
-        'borrower_name' => $peminjam->name,
-        'borrower_identifier' => $peminjam->identifier,
-        'borrower_phone' => $peminjam->phone,
-        'purpose' => 'Test Denda UKK Jaringan',
-        // Pinjam 3 hari yang lalu (20 April 2026)
-        'loan_date' => Carbon::create(2026, 4, 20), 
-        // Deadline 1 hari yang lalu (22 April 2026)
-        'return_due_date' => Carbon::create(2026, 4, 22), 
-        'status' => 'borrowed', 
-        'notes' => 'Harusnya balik kemarin, tes denda 1 hari.',
-        'items' => [
-            ['code' => 'NW-TKJ-005', 'quantity' => 1, 'condition_out' => 'baik'],
-        ],
-    ],
-    [
-        'borrower_name' => 'Ekstra Sinematografi',
-        'borrower_identifier' => 'EKS-001',
-        'borrower_phone' => '08123456789',
-        'purpose' => 'Test Denda Telat Parah',
-        // Pinjam tanggal 15 April
-        'loan_date' => Carbon::create(2026, 4, 15),
-        // Deadline tanggal 18 April
-        'return_due_date' => Carbon::create(2026, 4, 18),
-        'status' => 'borrowed',
-        'notes' => 'Sudah telat sekitar 5 hari.',
-        'items' => [
-            ['code' => 'CAM-MM-009', 'quantity' => 1, 'condition_out' => 'baik'],
-        ],
-    ],
-];        foreach ($loans as $loanData) {
+        // 4. Seed Loans (Disesuaikan dengan real-time 23 April 2026)
+        $loans = [
+            [
+                'borrower_name' => $peminjam->name,
+                'borrower_identifier' => $peminjam->identifier,
+                'borrower_phone' => $peminjam->phone,
+                'purpose' => 'Test Denda UKK Jaringan',
+                // Pinjam 3 hari yang lalu (20 April 2026)
+                'loan_date' => Carbon::create(2026, 4, 20),
+                // Deadline 1 hari yang lalu (22 April 2026)
+                'return_due_date' => Carbon::create(2026, 4, 22),
+                'status' => 'borrowed',
+                'notes' => 'Harusnya balik kemarin, tes denda 1 hari.',
+                'items' => [
+                    ['code' => 'NW-TKJ-005', 'quantity' => 1, 'condition_out' => 'baik'],
+                ],
+            ],
+            [
+                'borrower_name' => 'Ekstra Sinematografi',
+                'borrower_identifier' => 'EKS-001',
+                'borrower_phone' => '08123456789',
+                'purpose' => 'Test Denda Telat Parah',
+                // Pinjam tanggal 15 April
+                'loan_date' => Carbon::create(2026, 4, 15),
+                // Deadline tanggal 18 April
+                'return_due_date' => Carbon::create(2026, 4, 18),
+                'status' => 'borrowed',
+                'notes' => 'Sudah telat sekitar 5 hari.',
+                'items' => [
+                    ['code' => 'CAM-MM-009', 'quantity' => 1, 'condition_out' => 'baik'],
+                ],
+            ],
+        ];
+        foreach ($loans as $loanData) {
             $loan = Loan::query()->updateOrCreate(
                 [
                     'borrower_name' => $loanData['borrower_name'],
